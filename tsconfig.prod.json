@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig",
+  "exclude": ["**/__tests__/**/*", "commitlint.config.ts", "vitest.config.ts"]
+}
