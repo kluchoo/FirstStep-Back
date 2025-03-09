@@ -12,8 +12,6 @@ RUN set -ex && \
     chmod 755 /usr/local/bin/fast-apt-mirror.sh && \
     /usr/local/bin/fast-apt-mirror.sh find --apply && \
     # Install main packages and configure Python
-    curl -fsSL https://bun.sh/install | bash && \
-    mv ~/.bun/bin/* /usr/bin/ && \
     # Clean up
     apt-get clean && \
     apt-get autoremove -y && \
