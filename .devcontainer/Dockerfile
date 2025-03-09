@@ -1,7 +1,12 @@
 # Używamy uniwersalnego obrazu deweloperskiego od Microsoft jako obrazu bazowego
-FROM mcr.microsoft.com/vscode/devcontainers/base:ubuntu
-
+FROM mcr.microsoft.com/devcontainers/typescript-node
 ENV DEBIAN_FRONTEND=noninteractive 
+
+COPY prisma.sh /usr/local/bin/prisma.sh
+RUN chmod +x /usr/local/bin/prisma.sh
+
+
+
 
 RUN set -ex && \
     chmod +x /etc/bash.bashrc && \
@@ -11,7 +16,8 @@ RUN set -ex && \
     curl -sSL https://raw.githubusercontent.com/vegardit/fast-apt-mirror.sh/v1/fast-apt-mirror.sh -o /usr/local/bin/fast-apt-mirror.sh && \
     chmod 755 /usr/local/bin/fast-apt-mirror.sh && \
     /usr/local/bin/fast-apt-mirror.sh find --apply && \
-    # Install main packages and configure Python
+    echo alias baza="npx prisma generate" >> /etc/bash.bashrc && \
+    chmod +x /etc/bash.bashrc && \
     # Clean up
     apt-get clean && \
     apt-get autoremove -y && \
