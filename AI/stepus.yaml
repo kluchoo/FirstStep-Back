@@ -1,4 +1,4 @@
-from gemma3
+from {{MODEL_NAME}}
 
 parameter model "gemma3"
 parameter temperature 0.2
