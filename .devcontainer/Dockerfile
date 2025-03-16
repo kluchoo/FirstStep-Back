@@ -10,6 +10,7 @@ RUN chmod +x /usr/local/bin/prisma.sh
 
 RUN set -ex && \
     chmod +x /etc/bash.bashrc && \
+    echo alias stepus=\"docker exec -it stepus ollama run stepus\" >> /etc/bash.bashrc && \
     apt-get update && \
     apt-get install -y --no-install-recommends nala && \
     nala install -y --no-install-recommends curl apt-transport-https ca-certificates ffmpeg && \
