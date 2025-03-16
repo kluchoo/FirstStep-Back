@@ -35,7 +35,7 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/auth', authRoutes);
 
 // Zabezpieczone trasy
-app.get('/auth/resignin', authenticateToken, async (req, res) => {
+app.get('/auth', authenticateToken, async (req, res) => {
   res.json(req.user);
 });
 
