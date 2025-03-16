@@ -39,6 +39,11 @@
   },
   "postCreateCommand": {
     "pnpm": "curl -fsSL https://get.pnpm.io/install.sh | sh -",
-    "precommit": "echo '#!/bin/sh\n# Pre-commit hook to run Gitleaks\n\necho \"Running Gitleaks scan...\"\n\n# Run Gitleaks and capture output\ngitleaks git --staged --verbose --exit-code 1 $WORKSPACE_PATH\n\n# Capture the exit code\nEXIT_CODE=$?\n\n# Check if Gitleaks detected secrets\nif [ $EXIT_CODE -ne 0 ]; then\n    echo \"Gitleaks detected potential secrets! Aborting commit.\"\n    exit 1\nfi\n\necho \"No secrets detected. Proceeding with commit.\"\nexit 0\n' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
+    "precommit": "echo '#!/bin/sh\n# Pre-commit hook to run Gitleaks\n\necho \"Running Gitleaks scan...\"\n\n# Run Gitleaks and capture output\ngitleaks git --staged --verbose --exit-code 1 $WORKSPACE_PATH\n\n# Capture the exit code\nEXIT_CODE=$?\n\n# Check if Gitleaks detected secrets\nif [ $EXIT_CODE -ne 0 ]; then\n    echo \"Gitleaks detected potential secrets! Aborting commit.\"\n    exit 1\nfi\n\necho \"No secrets detected. Proceeding with commit.\"\nexit 0\n' > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit",
+    "pnpmInstall": "pnpm install",
+    "makeStepusImage": "docker build -t stepus AI",
+    "makeStepusContainer": "docker run -d -p 8080:11434 --name stepus stepus",
+    "stepusAlias": "echo alias stepus=\"docker exec -it stepus ollama run stepus\" >> /etc/bash.bashrc ",
+    "chmodAlias": "chmod +x /etc/bash.bashrc "
   }
 }

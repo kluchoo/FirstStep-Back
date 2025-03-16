@@ -8,6 +8,10 @@ import path, { dirname } from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
 import { generateSwagger } from './autogen';
+import { authenticateToken } from './middlewares/authMiddleware';
+import authRoutes from './routers/authRoutes';
+
+// import authRoutes from './routers/authRoutes';
 
 //swager opcje
 generateSwagger();
@@ -25,26 +29,38 @@ const prisma = new PrismaClient();
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.get('/api/users', async (req, res) => {
-  const users = await prisma.user.findMany();
-  res.json(users);
+//logowanie i rejestracja
+app.use('/auth', authRoutes);
+
+// Zabezpieczone trasy
+app.get('/auth', authenticateToken, async (req, res) => {
+  res.json(req.user);
 });
 
-app.get('/hello', (req, res) => {
-  res.json({ message: 'Hello World' });
-});
+// app.get('/api/users', async (req, res) => {
+//   const users = await prisma.user.findMany();
+//   const sanitizedUsers = users.map((user) => ({
+//     ...user,
+//     id: Number(user.id),
+//   }));
+//   res.json(sanitizedUsers);
+// });
 
-app.post('/api/users', async (req, res) => {
-  const { email } = req.body;
-  const user = await prisma.user.create({
-    data: {
-      email,
-    },
-  });
-  res.json(user);
-});
+// app.get('/hello', (req, res) => {
+//   res.json({ message: 'Hello World' });
+// });
+
+// app.post('/api/users', async (req, res) => {
+//   const { email } = req.body;
+//   const user = await prisma.user.create({
+//     data: {
+//       email,
+//     },
+//   });
+//   res.json(user);
+// });
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);

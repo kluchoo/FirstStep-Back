@@ -14,7 +14,51 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id                      BigInt    @id @default(autoincrement())
+  pseudonim               String    @db.VarChar(50)
+  email                   String    @unique @db.VarChar(100)
+  haslo                   String    @db.VarChar(255)
+  dataOstatniegoLogowania DateTime?
+  iloscKursow             Int
+
+  courses      Course[]
+  tests        Test[]
+  courseImages CourseImage[]
+}
+
+model Course {
+  id              BigInt @id @default(autoincrement())
+  idTworcy        BigInt
+  tresc           Json
+  kategorie       String @db.VarChar(100)
+  poziomTrudnosci String @db.VarChar(50)
+
+  creator  User     @relation(fields: [idTworcy], references: [id])
+  category Category @relation(fields: [kategorie], references: [nazwa])
+}
+
+model Category {
+  id          BigInt @id @default(autoincrement())
+  nazwa       String @unique @db.VarChar(100)
+  iloscKursow Int
+
+  courses Course[]
+}
+
+model Test {
+  id         BigInt @id @default(autoincrement())
+  idTworcy   BigInt
+  iloscPytan Int
+  pytania    Json
+  odpowiedzi Json
+
+  creator User @relation(fields: [idTworcy], references: [id])
+}
+
+model CourseImage {
+  id       BigInt @id @default(autoincrement())
+  idTworcy BigInt
+  zdjecie  Bytes
+
+  creator User @relation(fields: [idTworcy], references: [id])
 }
