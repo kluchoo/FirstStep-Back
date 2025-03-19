@@ -4,7 +4,7 @@ FROM ollama/ollama:latest
 WORKDIR /AI
 
 # Define build argument for model name
-ARG MODEL_NAME=gemma3:1b
+ARG MODEL_NAME=gemma3
 
 # Copy the configuration file
 COPY stepus.yaml /AI/stepus.yaml
