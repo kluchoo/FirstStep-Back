@@ -104,13 +104,20 @@
       }
     },
     "/ai/ask": {
-      "get": {
+      "post": {
         "description": "",
         "parameters": [
           {
-            "name": "Message",
-            "in": "header",
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "messages": {
+                  "example": "any"
+                }
+              }
+            }
           }
         ],
         "responses": {

@@ -3,6 +3,6 @@ import { askAi } from '../controllers/aiControlers';
 
 const router = Router();
 
-router.get('/ask', askAi);
+router.post('/ask', askAi);
 
 export default router;
