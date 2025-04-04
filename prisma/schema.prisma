@@ -1,11 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// schema.prisma
 generator client {
   provider = "prisma-client-js"
+}
+
+generator dbml {
+  provider = "prisma-dbml-generator"
 }
 
 datasource db {
@@ -13,52 +12,172 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                      BigInt    @id @default(autoincrement())
-  pseudonim               String    @db.VarChar(50)
-  email                   String    @unique @db.VarChar(100)
-  haslo                   String    @db.VarChar(255)
-  dataOstatniegoLogowania DateTime?
-  iloscKursow             Int
+model Użytkownicy {
+  id                        BigInt          @id @default(autoincrement())
+  pseudonim                 String          @db.VarChar(50)
+  email                     String          @unique @db.VarChar(100)
+  haslo                     String          @db.VarChar(255)
+  data_ostatniego_logowania DateTime?       @db.Timestamp
+  rola                      Rola            @default(STUDENT)
+  tworzone_kursy            Kursy[]
+  tworzone_testy            Testy[]
+  zapisy_na_kursy           ZapisyNaKursy[]
+  wyniki_testow             WynikiTestow[]
 
-  courses      Course[]
-  tests        Test[]
-  courseImages CourseImage[]
+  @@map("uzytkownicy")
 }
 
-model Course {
-  id              BigInt @id @default(autoincrement())
-  idTworcy        BigInt
-  tresc           Json
-  kategorie       String @db.VarChar(100)
-  poziomTrudnosci String @db.VarChar(50)
-
-  creator  User     @relation(fields: [idTworcy], references: [id])
-  category Category @relation(fields: [kategorie], references: [nazwa])
+enum Rola {
+  ADMIN
+  TEACHER
+  STUDENT
 }
 
-model Category {
-  id          BigInt @id @default(autoincrement())
-  nazwa       String @unique @db.VarChar(100)
-  iloscKursow Int
+model Kategorie {
+  id    BigInt  @id @default(autoincrement())
+  nazwa String  @unique @db.VarChar(100)
+  opis  String? @db.Text
+  kursy Kursy[]
 
-  courses Course[]
+  @@map("kategorie")
 }
 
-model Test {
-  id         BigInt @id @default(autoincrement())
-  idTworcy   BigInt
-  iloscPytan Int
-  pytania    Json
-  odpowiedzi Json
+model Kursy {
+  id               BigInt          @id @default(autoincrement())
+  id_tworcy        BigInt
+  id_kategorii     BigInt
+  id_testu         BigInt?
+  tytul            String          @db.VarChar(255)
+  opis             String?         @db.Text
+  poziom_trudnosci PoziomTrudnosci
+  data_utworzenia  DateTime        @default(now()) @db.Timestamp
+  data_modyfikacji DateTime        @default(now()) @updatedAt @db.Timestamp
+  liczba_studentow Int             @default(0)
+  status           StatusKursu     @default(WERSJA_ROBOCZA)
+  tworca           Użytkownicy    @relation(fields: [id_tworcy], references: [id])
+  kategoria        Kategorie       @relation(fields: [id_kategorii], references: [id])
+  test             Testy?          @relation("KursyToTesty")
+  elementy_kursu   ElementyKursu[]
+  zapisy_na_kursy  ZapisyNaKursy[]
 
-  creator User @relation(fields: [idTworcy], references: [id])
+  @@map("kursy")
 }
 
-model CourseImage {
-  id       BigInt @id @default(autoincrement())
-  idTworcy BigInt
-  zdjecie  Bytes
+enum PoziomTrudnosci {
+  PODSTAWOWY
+  SREDNIOZAAWANSOWANY
+  ZAAWANSOWANY
+}
 
-  creator User @relation(fields: [idTworcy], references: [id])
+enum StatusKursu {
+  WERSJA_ROBOCZA
+  OPUBLIKOWANY
+  ZARCHIWIZOWANY
+}
+
+model Testy {
+  id              BigInt           @id @default(autoincrement())
+  id_tworcy       BigInt
+  id_kursu        BigInt
+  tytul           String           @db.VarChar(255)
+  czas_trwania    Int // w minutach
+  data_utworzenia DateTime         @default(now()) @db.Timestamp
+  tworca          Użytkownicy     @relation(fields: [id_tworcy], references: [id])
+  kurs            Kursy            @relation("KursyToTesty", fields: [kursyId], references: [id])
+  pytania         PytaniaTestowe[]
+  wyniki_testow   WynikiTestow[]
+  kursyId         BigInt           @unique
+
+  @@map("testy")
+}
+
+model PytaniaTestowe {
+  id          BigInt       @id @default(autoincrement())
+  id_testu    BigInt
+  tresc       String       @db.Text
+  typ_pytania TypPytania
+  punkty      Int          @default(1)
+  kolejnosc   Int
+  test        Testy        @relation(fields: [id_testu], references: [id])
+  odpowiedzi  Odpowiedzi[]
+
+  @@map("pytania_testowe")
+}
+
+enum TypPytania {
+  JEDNOKROTNY_WYBOR
+  WIELOKROTNY_WYBOR
+  PRAWDA_FALSZ
+}
+
+model Odpowiedzi {
+  id           BigInt         @id @default(autoincrement())
+  id_pytania   BigInt
+  tresc        String         @db.Text
+  czy_poprawna Boolean        @default(false)
+  kolejnosc    Int
+  pytanie      PytaniaTestowe @relation(fields: [id_pytania], references: [id])
+
+  @@map("odpowiedzi")
+}
+
+model ElementyKursu {
+  id             BigInt      @id @default(autoincrement())
+  id_kursu       BigInt
+  typ            TypElementu
+  tresc          String      @db.Text
+  kolejnosc      Int
+  dodatkowe_dane Json?
+  kurs           Kursy       @relation(fields: [id_kursu], references: [id])
+
+  @@map("elementy_kursu")
+}
+
+enum TypElementu {
+  NAGLOWEK
+  TEKST
+  OBRAZ
+  WIDEO
+  PLIK
+  KOD
+}
+
+model ZapisyNaKursy {
+  id             BigInt       @id @default(autoincrement())
+  id_kursu       BigInt
+  id_uzytkownika BigInt
+  data_zapisu    DateTime     @default(now()) @db.Timestamp
+  status         StatusZapisu @default(AKTYWNY)
+  postep         Int          @default(0) // w %
+  kurs           Kursy        @relation(fields: [id_kursu], references: [id])
+  uzytkownik     Użytkownicy @relation(fields: [id_uzytkownika], references: [id])
+
+  @@unique([id_kursu, id_uzytkownika])
+  @@map("zapisy_na_kursy")
+}
+
+enum StatusZapisu {
+  AKTYWNY
+  UKONCZONY
+  PORZUCONY
+}
+
+model WynikiTestow {
+  id               BigInt       @id @default(autoincrement())
+  id_testu         BigInt
+  id_uzytkownika   BigInt
+  wynik            Int // w %
+  data_rozpoczecia DateTime     @db.Timestamp
+  data_zakonczenia DateTime?    @db.Timestamp
+  status           StatusWyniku @default(W_TRAKCIE)
+  test             Testy        @relation(fields: [id_testu], references: [id])
+  uzytkownik       Użytkownicy @relation(fields: [id_uzytkownika], references: [id])
+
+  @@map("wyniki_testow")
+}
+
+enum StatusWyniku {
+  W_TRAKCIE
+  ZAKONCZONY
+  OCENIONY
 }

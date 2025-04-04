@@ -1,0 +1,180 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table uzytkownicy {
+  id BigInt [pk, increment]
+  pseudonim String [not null]
+  email String [unique, not null]
+  haslo String [not null]
+  data_ostatniego_logowania DateTime
+  rola Rola [not null, default: 'STUDENT']
+  tworzone_kursy kursy [not null]
+  tworzone_testy testy [not null]
+  zapisy_na_kursy zapisy_na_kursy [not null]
+  wyniki_testow wyniki_testow [not null]
+}
+
+Table kategorie {
+  id BigInt [pk, increment]
+  nazwa String [unique, not null]
+  opis String
+  kursy kursy [not null]
+}
+
+Table kursy {
+  id BigInt [pk, increment]
+  id_tworcy BigInt [not null]
+  id_kategorii BigInt [not null]
+  id_testu BigInt
+  tytul String [not null]
+  opis String
+  poziom_trudnosci PoziomTrudnosci [not null]
+  data_utworzenia DateTime [default: `now()`, not null]
+  data_modyfikacji DateTime [default: `now()`, not null]
+  liczba_studentow Int [not null, default: 0]
+  status StatusKursu [not null, default: 'WERSJA_ROBOCZA']
+  tworca uzytkownicy [not null]
+  kategoria kategorie [not null]
+  test testy
+  elementy_kursu elementy_kursu [not null]
+  zapisy_na_kursy zapisy_na_kursy [not null]
+}
+
+Table testy {
+  id BigInt [pk, increment]
+  id_tworcy BigInt [not null]
+  id_kursu BigInt [not null]
+  tytul String [not null]
+  czas_trwania Int [not null]
+  data_utworzenia DateTime [default: `now()`, not null]
+  tworca uzytkownicy [not null]
+  kurs kursy [not null]
+  pytania pytania_testowe [not null]
+  wyniki_testow wyniki_testow [not null]
+  kursyId BigInt [unique, not null]
+}
+
+Table pytania_testowe {
+  id BigInt [pk, increment]
+  id_testu BigInt [not null]
+  tresc String [not null]
+  typ_pytania TypPytania [not null]
+  punkty Int [not null, default: 1]
+  kolejnosc Int [not null]
+  test testy [not null]
+  odpowiedzi odpowiedzi [not null]
+}
+
+Table odpowiedzi {
+  id BigInt [pk, increment]
+  id_pytania BigInt [not null]
+  tresc String [not null]
+  czy_poprawna Boolean [not null, default: false]
+  kolejnosc Int [not null]
+  pytanie pytania_testowe [not null]
+}
+
+Table elementy_kursu {
+  id BigInt [pk, increment]
+  id_kursu BigInt [not null]
+  typ TypElementu [not null]
+  tresc String [not null]
+  kolejnosc Int [not null]
+  dodatkowe_dane Json
+  kurs kursy [not null]
+}
+
+Table zapisy_na_kursy {
+  id BigInt [pk, increment]
+  id_kursu BigInt [not null]
+  id_uzytkownika BigInt [not null]
+  data_zapisu DateTime [default: `now()`, not null]
+  status StatusZapisu [not null, default: 'AKTYWNY']
+  postep Int [not null, default: 0]
+  kurs kursy [not null]
+  uzytkownik uzytkownicy [not null]
+
+  indexes {
+    (id_kursu, id_uzytkownika) [unique]
+  }
+}
+
+Table wyniki_testow {
+  id BigInt [pk, increment]
+  id_testu BigInt [not null]
+  id_uzytkownika BigInt [not null]
+  wynik Int [not null]
+  data_rozpoczecia DateTime [not null]
+  data_zakonczenia DateTime
+  status StatusWyniku [not null, default: 'W_TRAKCIE']
+  test testy [not null]
+  uzytkownik uzytkownicy [not null]
+}
+
+Enum Rola {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+Enum PoziomTrudnosci {
+  PODSTAWOWY
+  SREDNIOZAAWANSOWANY
+  ZAAWANSOWANY
+}
+
+Enum StatusKursu {
+  WERSJA_ROBOCZA
+  OPUBLIKOWANY
+  ZARCHIWIZOWANY
+}
+
+Enum TypPytania {
+  JEDNOKROTNY_WYBOR
+  WIELOKROTNY_WYBOR
+  PRAWDA_FALSZ
+}
+
+Enum TypElementu {
+  NAGLOWEK
+  TEKST
+  OBRAZ
+  WIDEO
+  PLIK
+  KOD
+}
+
+Enum StatusZapisu {
+  AKTYWNY
+  UKONCZONY
+  PORZUCONY
+}
+
+Enum StatusWyniku {
+  W_TRAKCIE
+  ZAKONCZONY
+  OCENIONY
+}
+
+Ref: kursy.id_tworcy > uzytkownicy.id
+
+Ref: kursy.id_kategorii > kategorie.id
+
+Ref: testy.id_tworcy > uzytkownicy.id
+
+Ref: testy.kursyId - kursy.id
+
+Ref: pytania_testowe.id_testu > testy.id
+
+Ref: odpowiedzi.id_pytania > pytania_testowe.id
+
+Ref: elementy_kursu.id_kursu > kursy.id
+
+Ref: zapisy_na_kursy.id_kursu > kursy.id
+
+Ref: zapisy_na_kursy.id_uzytkownika > uzytkownicy.id
+
+Ref: wyniki_testow.id_testu > testy.id
+
+Ref: wyniki_testow.id_uzytkownika > uzytkownicy.id
