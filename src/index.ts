@@ -7,6 +7,7 @@ import path, { dirname } from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
 import { generateSwagger } from './autogen';
+import limiter from './middlewares/rateLimitMiddleware';
 import aiRouters from './routers/aiRouters';
 import authRoutes from './routers/authRoutes';
 
@@ -28,6 +29,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use(limiter);
 
 //logowanie i rejestracja
 app.use('/auth', authRoutes);
