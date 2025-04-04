@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 
 export const askAi = async (req: Request, res: Response) => {
   try {
+    debug('Received request to ask AI:', req.body);
     // Pobierz wiadomości z ciała żądania
     const { messages } = req.body;
     if (!messages || !Array.isArray(messages)) {

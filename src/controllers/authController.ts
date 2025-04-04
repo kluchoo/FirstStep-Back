@@ -9,20 +9,20 @@ export const register = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.Users.findUnique({ where: { email } });
 
     if (existingUser) {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
+    const user = await prisma.users.create({
       data: {
         email,
-        haslo: hashedPassword,
-        pseudonim: email.split('@')[0], // Default nickname from email
-        iloscKursow: 0, // Default number of courses
-        dataOstatniegoLogowania: new Date(), // Default last login date
+        password: hashedPassword,
+        nickname: email.split('@')[0],
+        lastLoginDate: new Date(),
+        role: 'STUDENT', // Default role
       },
     });
 
@@ -48,20 +48,20 @@ export const login = async (req: Request, res: Response) => {
   console.log('email:', email);
   console.log('password:', password);
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.users.findUnique({ where: { email } });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.haslo);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     console.log('User:', user);
-    const { haslo, ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = user;
 
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ error: 'JWT_SECRET is not configured' });
