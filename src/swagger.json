@@ -26,6 +26,9 @@
                 },
                 "password": {
                   "example": "any"
+                },
+                "nickname": {
+                  "example": "any"
                 }
               }
             }

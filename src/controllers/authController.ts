@@ -6,36 +6,46 @@ import jwt from 'jsonwebtoken';
 const prisma = new PrismaClient();
 
 export const register = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, nickname } = req.body;
 
   try {
-    const existingUser = await prisma.Users.findUnique({ where: { email } });
+    const existingUser = await prisma.users.findUnique({ where: { email } });
 
     if (existingUser) {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+    const decodedToken = jwt.verify(password, process.env.JWT_SECRET);
+    if (
+      typeof decodedToken !== 'object' ||
+      decodedToken === null ||
+      !('password' in decodedToken)
+    ) {
+      throw new Error('Invalid token payload');
+    }
+    const hashedPassword = await bcrypt.hash(decodedToken['password'], 10);
     const user = await prisma.users.create({
       data: {
         email,
         password: hashedPassword,
-        nickname: email.split('@')[0],
+        nickname: nickname,
         lastLoginDate: new Date(),
         role: 'STUDENT', // Default role
       },
     });
 
-    const userWithoutPassword = { ...user, haslo: undefined };
+    const { password: _, ...userWithoutPassword } = user;
 
     // Konwertuj BigInt na string
-    const userResponse = {
+    const userPayload = {
       ...userWithoutPassword,
-
       id: user.id.toString(),
     };
 
-    res.status(201).json(userResponse);
+    res.status(201).json(userPayload);
   } catch (error) {
     console.error('Registration error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -53,11 +63,18 @@ export const login = async (req: Request, res: Response) => {
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    const decoded = jwt.verify(password, process.env.JWT_SECRET);
+    if (typeof decoded === 'object' && decoded !== null && 'password' in decoded) {
+      const isPasswordValid = await bcrypt.compare(decoded['password'], user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+    } else {
+      return res.status(401).json({ error: 'Invalid token payload' });
     }
 
     console.log('User:', user);
