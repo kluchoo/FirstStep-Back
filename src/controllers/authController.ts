@@ -1,9 +1,20 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
+
+const secretKey = !process.env.SECRET_KEY;
+const iv = Buffer.alloc(16, 0);
+
+export const decryptPassword = (encryptedPassword: string): string => {
+  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(secretKey), iv);
+  let decrypted = decipher.update(encryptedPassword, 'base64', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+};
 
 export const register = async (req: Request, res: Response) => {
   const { email, password, nickname } = req.body;
@@ -15,18 +26,8 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
 
-    if (!process.env.JWT_SECRET) {
-      throw new Error('JWT_SECRET is not configured');
-    }
-    const decodedToken = jwt.verify(password, process.env.JWT_SECRET);
-    if (
-      typeof decodedToken !== 'object' ||
-      decodedToken === null ||
-      !('password' in decodedToken)
-    ) {
-      throw new Error('Invalid token payload');
-    }
-    const hashedPassword = await bcrypt.hash(decodedToken['password'], 10);
+    // const hashedPassword = await bcrypt.hash(decryptPassword(password), 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.users.create({
       data: {
         email,
@@ -55,8 +56,7 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
-  console.log('email:', email);
-  console.log('password:', password);
+
   try {
     const user = await prisma.users.findUnique({ where: { email } });
 
@@ -67,17 +67,15 @@ export const login = async (req: Request, res: Response) => {
       throw new Error('JWT_SECRET is not configured');
     }
 
-    const decoded = jwt.verify(password, process.env.JWT_SECRET);
-    if (typeof decoded === 'object' && decoded !== null && 'password' in decoded) {
-      const isPasswordValid = await bcrypt.compare(decoded['password'], user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-    } else {
-      return res.status(401).json({ error: 'Invalid token payload' });
+    // const decoded = decryptPassword(password);
+    const decoded = password;
+
+    const isPasswordValid = await bcrypt.compare(decoded, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    console.log('User:', user);
     const { password: _, ...userWithoutPassword } = user;
 
     if (!process.env.JWT_SECRET) {
