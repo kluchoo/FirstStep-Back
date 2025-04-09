@@ -38,7 +38,11 @@ export const askAi = async (req: Request, res: Response) => {
     // Zwróć odpowiedź AI
     return res.status(200).json({ message: aiResponse });
   } catch (e) {
-    console.error('Error communicating with Ollama:', e);
+    if (axios.isAxiosError(e)) {
+      console.error('Axios error:', e.response?.data || e.message);
+    } else {
+      console.error('Unexpected error:', e);
+    }
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

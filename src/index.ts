@@ -5,13 +5,13 @@ import https from 'https';
 import path, { dirname } from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
-import { generateSwagger } from './autogen';
+// import { generateSwagger } from './autogen';
 import limiter from './middlewares/rateLimitMiddleware';
 import aiRouters from './routers/aiRouters';
 import authRoutes from './routers/authRoutes';
 
 // Generowanie Swaggera
-generateSwagger();
+// generateSwagger();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -28,26 +28,15 @@ const agent = new https.Agent({
   rejectUnauthorized: false, // Ignoruj błędy certyfikatu
 });
 
-app.use(
-  '/docs',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerDocument, {
-    swaggerOptions: {
-      requestInterceptor: (req) => {
-        req.agent = agent;
-        return req;
-      },
-    },
-  }),
-);
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use(limiter);
 
-app.use((req, res, next) => {
-  if (!req.secure) {
-    return res.redirect(`https://${req.headers.host}${req.url}`);
-  }
-  next();
-});
+// app.use((req, res, next) => {
+//   if (!req.secure) {
+//     return res.redirect(`http://${req.headers.host}${req.url}`);
+//   }
+//   next();
+// });
 
 // Logowanie i rejestracja
 app.use('/auth', authRoutes);
@@ -61,12 +50,12 @@ const sslOptions = {
   cert: fs.readFileSync(path.join(__dirname, 'certs', 'cert.pem')), // Ścieżka do certyfikatu
 };
 
-// app.listen(process.env.PORT, () => {
-//   console.log(`Server running on port ${process.env.PORT}`);
-// });
+app.listen(process.env.PORT, () => {
+  console.log(`Server running on port ${process.env.PORT}`);
+});
 
 // Uruchom serwer HTTPS
-const PORT = process.env.PORT || 8443; // Domyślny port HTTPS to 443
-https.createServer(sslOptions, app).listen(PORT, () => {
-  console.log(`secured server running on https://localhost:${PORT}`);
-});
+// const PORT = process.env.PORT || 8443; // Domyślny port HTTPS to 443
+// https.createServer(sslOptions, app).listen(PORT, () => {
+//   console.log(`secured server running on https://localhost:${PORT}`);
+// });

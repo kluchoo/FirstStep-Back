@@ -1,18 +1,27 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "My API",
-    "description": "Description",
+    "title": "FirstStep API",
+    "description": "API documentation for FirstStep",
     "version": "1.0.0"
   },
   "host": "localhost:3000",
   "basePath": "/",
-  "schemes": [
-    "http"
+  "schemes": ["http"],
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Authentication operations"
+    },
+    {
+      "name": "ai",
+      "description": "AI operations"
+    }
   ],
   "paths": {
     "/auth/register": {
       "post": {
+        "tags": ["auth"],
         "description": "",
         "parameters": [
           {
@@ -49,6 +58,7 @@
     },
     "/auth/login": {
       "post": {
+        "tags": ["auth"],
         "description": "",
         "parameters": [
           {
@@ -82,6 +92,7 @@
     },
     "/auth/authenticate": {
       "get": {
+        "tags": ["auth"],
         "description": "",
         "parameters": [
           {
@@ -108,16 +119,41 @@
     },
     "/ai/ask": {
       "post": {
-        "description": "",
+        "tags": ["ai"],
+        "description": "Send a prompt to the AI model",
         "parameters": [
           {
             "name": "body",
             "in": "body",
+            "required": true,
             "schema": {
               "type": "object",
               "properties": {
                 "messages": {
-                  "example": "any"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "role": {
+                        "type": "string",
+                        "example": "user"
+                      },
+                      "content": {
+                        "type": "string",
+                        "example": "Hello, AI!"
+                      }
+                    }
+                  },
+                  "example": [
+                    {
+                      "role": "user",
+                      "content": "Hello, AI!"
+                    },
+                    {
+                      "role": "assistant",
+                      "content": "How can I help you?"
+                    }
+                  ]
                 }
               }
             }
@@ -125,13 +161,40 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "AI response",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Hello, how can I assist you?"
+                }
+              }
+            }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Invalid input"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Something went wrong"
+                }
+              }
+            }
           }
         }
       }
