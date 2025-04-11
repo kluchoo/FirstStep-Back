@@ -39,6 +39,7 @@ Table Courses {
   test Tests
   courseElements CourseElements [not null]
   enrollments Enrollments [not null]
+  courseOrder CourseElementOrder
 }
 
 Table Tests {
@@ -72,6 +73,12 @@ Table Answers {
   isCorrect Boolean [not null, default: false]
   order Int [not null]
   question TestQuestions [not null]
+}
+
+Table CourseElementOrder {
+  courseId BigInt [pk]
+  lastOrder Int [not null, default: 1]
+  course Courses [not null]
 }
 
 Table CourseElements {
@@ -167,6 +174,8 @@ Ref: Tests.courseId - Courses.id
 Ref: TestQuestions.testId > Tests.id
 
 Ref: Answers.questionId > TestQuestions.id
+
+Ref: CourseElementOrder.courseId - Courses.id
 
 Ref: CourseElements.courseId > Courses.id
 

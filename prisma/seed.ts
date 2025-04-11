@@ -18,6 +18,25 @@ const isDevelopment = process.env.DEVELOPMENT === 'true';
 
 const prisma = new PrismaClient();
 
+// Funkcja do czyszczenia bazy danych
+async function cleanDatabase() {
+  console.log('Czyszczenie bazy danych...');
+
+  // Usuwanie danych w odpowiedniej kolejności ze względu na zależności
+  await prisma.answers.deleteMany();
+  await prisma.testQuestions.deleteMany();
+  await prisma.testResults.deleteMany();
+  await prisma.tests.deleteMany();
+  await prisma.enrollments.deleteMany();
+  await prisma.courseElements.deleteMany();
+  await prisma.courseElementOrder.deleteMany();
+  await prisma.courses.deleteMany();
+  await prisma.categories.deleteMany();
+  await prisma.users.deleteMany();
+
+  console.log('Baza danych została wyczyszczona');
+}
+
 // Funkcja do seedowania pojedynczego użytkownika
 async function seedUser(nickname: string, email: string, role: Role, password: string) {
   try {
@@ -70,7 +89,8 @@ async function seedCourse(
   status: CourseStatus = CourseStatus.PUBLISHED,
 ) {
   try {
-    return await prisma.courses.create({
+    // Tworzymy kurs
+    const course = await prisma.courses.create({
       data: {
         creatorId,
         categoryId,
@@ -78,8 +98,16 @@ async function seedCourse(
         description,
         difficultyLevel,
         status,
+        // Tworzymy również CourseElementOrder dla tego kursu
+        courseOrder: {
+          create: {
+            lastOrder: 1,
+          },
+        },
       },
     });
+
+    return course;
   } catch (error) {
     console.error(`Błąd podczas tworzenia kursu ${title}:`, error);
     throw error;
@@ -90,17 +118,45 @@ async function seedCourse(
 async function seedCourseElements(courseId: bigint, elementsCount: number = 5) {
   const elementTypes = Object.values(ElementType);
 
-  for (let i = 0; i < elementsCount; i++) {
-    const type = faker.helpers.arrayElement(elementTypes);
-    await prisma.courseElements.create({
-      data: {
-        courseId,
-        type,
-        content: faker.lorem.paragraphs(3),
-        order: i + 1,
-        additionalData: {},
-      },
+  try {
+    // Pobierz bieżący lastOrder dla tego kursu
+    let courseOrder = await prisma.courseElementOrder.findUnique({
+      where: { courseId },
     });
+
+    if (!courseOrder) {
+      courseOrder = await prisma.courseElementOrder.create({
+        data: {
+          courseId,
+          lastOrder: 1,
+        },
+      });
+    }
+
+    const currentOrder = courseOrder.lastOrder;
+
+    // Tworzymy elementy kursu
+    for (let i = 0; i < elementsCount; i++) {
+      const type = faker.helpers.arrayElement(elementTypes);
+      await prisma.courseElements.create({
+        data: {
+          courseId,
+          type,
+          content: faker.lorem.paragraphs(3),
+          order: currentOrder + i,
+          additionalData: {},
+        },
+      });
+    }
+
+    // Aktualizujemy lastOrder w CourseElementOrder
+    await prisma.courseElementOrder.update({
+      where: { courseId },
+      data: { lastOrder: currentOrder + elementsCount },
+    });
+  } catch (error) {
+    console.error(`Błąd podczas tworzenia elementów dla kursu ID: ${courseId}:`, error);
+    throw error;
   }
 }
 
@@ -180,6 +236,9 @@ async function seedTest(
 }
 
 async function main() {
+  // Najpierw czyścimy bazę danych
+  await cleanDatabase();
+
   const defaultPassword = '$2b$10$6iP4.aytBwTWlJmHCZWD5eVQy5faxxQtjEsQpk5kcTiBBzJwYyrim'; // zahaszowane "password123"
   console.log('Rozpoczęto seedowanie bazy danych...');
 

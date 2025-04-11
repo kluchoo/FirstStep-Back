@@ -537,6 +537,158 @@
           }
         }
       }
+    },
+    "/courses/{courseId}/elements": {
+      "get": {
+        "tags": ["courses"],
+        "summary": "Get course elements",
+        "description": "Retrieve all elements of a specific course by its ID.",
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "ID of the course"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of course elements",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["HEADER", "TEXT", "IMAGE", "VIDEO", "FILE", "CODE"],
+                    "example": "TEXT"
+                  },
+                  "content": {
+                    "type": "string",
+                    "example": "This is a course element content."
+                  },
+                  "order": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "additionalData": {
+                    "type": "object",
+                    "example": {
+                      "key": "value"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Course not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": ["courses"],
+        "summary": "Set course elements",
+        "description": "Update existing elements and create new elements for a course. Elements not included in the request will be deleted.",
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "ID of the course"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "elements": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "description": "ID of the element (optional for new elements)",
+                        "example": 1
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": ["HEADER", "TEXT", "IMAGE", "VIDEO", "FILE", "CODE"],
+                        "example": "TEXT"
+                      },
+                      "content": {
+                        "type": "string",
+                        "example": "This is the content of the course element."
+                      },
+                      "order": {
+                        "type": "integer",
+                        "example": 1
+                      }
+                    },
+                    "required": ["type", "content", "order"]
+                  }
+                }
+              },
+              "required": ["elements"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Elements updated successfully",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["HEADER", "TEXT", "IMAGE", "VIDEO", "FILE", "CODE"],
+                    "example": "TEXT"
+                  },
+                  "content": {
+                    "type": "string",
+                    "example": "This is the content of the course element."
+                  },
+                  "order": {
+                    "type": "integer",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Course not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "definitions": {

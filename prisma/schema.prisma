@@ -38,22 +38,23 @@ model Categories {
 }
 
 model Courses {
-  id               BigInt           @id @default(autoincrement())
+  id               BigInt              @id @default(autoincrement())
   creatorId        BigInt
   categoryId       BigInt
   testId           BigInt?
-  title            String           @db.VarChar(255)
-  description      String?          @db.Text
+  title            String              @db.VarChar(255)
+  description      String?             @db.Text
   difficultyLevel  Difficulty
-  creationDate     DateTime         @default(now()) @db.Timestamp
-  modificationDate DateTime         @default(now()) @updatedAt @db.Timestamp
-  studentCount     Int              @default(0)
-  status           CourseStatus     @default(DRAFT)
-  creator          Users            @relation(fields: [creatorId], references: [id])
-  category         Categories       @relation(fields: [categoryId], references: [id])
-  test             Tests?           @relation("CoursesToTests")
+  creationDate     DateTime            @default(now()) @db.Timestamp
+  modificationDate DateTime            @default(now()) @updatedAt @db.Timestamp
+  studentCount     Int                 @default(0)
+  status           CourseStatus        @default(DRAFT)
+  creator          Users               @relation(fields: [creatorId], references: [id])
+  category         Categories          @relation(fields: [categoryId], references: [id])
+  test             Tests?              @relation("CoursesToTests")
   courseElements   CourseElements[]
   enrollments      Enrollments[]
+  courseOrder      CourseElementOrder?
 }
 
 enum Difficulty {
@@ -105,6 +106,12 @@ model Answers {
   isCorrect  Boolean       @default(false)
   order      Int
   question   TestQuestions @relation(fields: [questionId], references: [id])
+}
+
+model CourseElementOrder {
+  courseId  BigInt  @id
+  lastOrder Int     @default(1)
+  course    Courses @relation(fields: [courseId], references: [id])
 }
 
 model CourseElements {
