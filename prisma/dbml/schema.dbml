@@ -2,179 +2,178 @@
 //// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 //// ------------------------------------------------------
 
-Table uzytkownicy {
+Table Users {
   id BigInt [pk, increment]
-  pseudonim String [not null]
+  nickname String [unique, not null]
   email String [unique, not null]
-  haslo String [not null]
-  data_ostatniego_logowania DateTime
-  rola Rola [not null, default: 'STUDENT']
-  tworzone_kursy kursy [not null]
-  tworzone_testy testy [not null]
-  zapisy_na_kursy zapisy_na_kursy [not null]
-  wyniki_testow wyniki_testow [not null]
+  password String [not null]
+  lastLoginDate DateTime
+  role Role [not null, default: 'STUDENT']
+  createdCourses Courses [not null]
+  createdTests Tests [not null]
+  courseEnrollments Enrollments [not null]
+  testResults TestResults [not null]
 }
 
-Table kategorie {
+Table Categories {
   id BigInt [pk, increment]
-  nazwa String [unique, not null]
-  opis String
-  kursy kursy [not null]
+  name String [unique, not null]
+  description String
+  courses Courses [not null]
 }
 
-Table kursy {
+Table Courses {
   id BigInt [pk, increment]
-  id_tworcy BigInt [not null]
-  id_kategorii BigInt [not null]
-  id_testu BigInt
-  tytul String [not null]
-  opis String
-  poziom_trudnosci PoziomTrudnosci [not null]
-  data_utworzenia DateTime [default: `now()`, not null]
-  data_modyfikacji DateTime [default: `now()`, not null]
-  liczba_studentow Int [not null, default: 0]
-  status StatusKursu [not null, default: 'WERSJA_ROBOCZA']
-  tworca uzytkownicy [not null]
-  kategoria kategorie [not null]
-  test testy
-  elementy_kursu elementy_kursu [not null]
-  zapisy_na_kursy zapisy_na_kursy [not null]
+  creatorId BigInt [not null]
+  categoryId BigInt [not null]
+  testId BigInt
+  title String [not null]
+  description String
+  difficultyLevel Difficulty [not null]
+  creationDate DateTime [default: `now()`, not null]
+  modificationDate DateTime [default: `now()`, not null]
+  studentCount Int [not null, default: 0]
+  status CourseStatus [not null, default: 'DRAFT']
+  creator Users [not null]
+  category Categories [not null]
+  test Tests
+  courseElements CourseElements [not null]
+  enrollments Enrollments [not null]
 }
 
-Table testy {
+Table Tests {
   id BigInt [pk, increment]
-  id_tworcy BigInt [not null]
-  id_kursu BigInt [not null]
-  tytul String [not null]
-  czas_trwania Int [not null]
-  data_utworzenia DateTime [default: `now()`, not null]
-  tworca uzytkownicy [not null]
-  kurs kursy [not null]
-  pytania pytania_testowe [not null]
-  wyniki_testow wyniki_testow [not null]
-  kursyId BigInt [unique, not null]
+  creatorId BigInt [not null]
+  courseId BigInt [unique, not null]
+  title String [not null]
+  duration Int [not null]
+  creationDate DateTime [default: `now()`, not null]
+  creator Users [not null]
+  course Courses [not null]
+  questions TestQuestions [not null]
+  testResults TestResults [not null]
 }
 
-Table pytania_testowe {
+Table TestQuestions {
   id BigInt [pk, increment]
-  id_testu BigInt [not null]
-  tresc String [not null]
-  typ_pytania TypPytania [not null]
-  punkty Int [not null, default: 1]
-  kolejnosc Int [not null]
-  test testy [not null]
-  odpowiedzi odpowiedzi [not null]
+  testId BigInt [not null]
+  content String [not null]
+  questionType QuestionType [not null]
+  points Int [not null, default: 1]
+  order Int [not null]
+  test Tests [not null]
+  answers Answers [not null]
 }
 
-Table odpowiedzi {
+Table Answers {
   id BigInt [pk, increment]
-  id_pytania BigInt [not null]
-  tresc String [not null]
-  czy_poprawna Boolean [not null, default: false]
-  kolejnosc Int [not null]
-  pytanie pytania_testowe [not null]
+  questionId BigInt [not null]
+  content String [not null]
+  isCorrect Boolean [not null, default: false]
+  order Int [not null]
+  question TestQuestions [not null]
 }
 
-Table elementy_kursu {
+Table CourseElements {
   id BigInt [pk, increment]
-  id_kursu BigInt [not null]
-  typ TypElementu [not null]
-  tresc String [not null]
-  kolejnosc Int [not null]
-  dodatkowe_dane Json
-  kurs kursy [not null]
+  courseId BigInt [not null]
+  type ElementType [not null]
+  content String [not null]
+  order Int [not null]
+  additionalData Json
+  course Courses [not null]
 }
 
-Table zapisy_na_kursy {
+Table Enrollments {
   id BigInt [pk, increment]
-  id_kursu BigInt [not null]
-  id_uzytkownika BigInt [not null]
-  data_zapisu DateTime [default: `now()`, not null]
-  status StatusZapisu [not null, default: 'AKTYWNY']
-  postep Int [not null, default: 0]
-  kurs kursy [not null]
-  uzytkownik uzytkownicy [not null]
+  courseId BigInt [not null]
+  userId BigInt [not null]
+  enrollmentDate DateTime [default: `now()`, not null]
+  status EnrollmentStatus [not null, default: 'ACTIVE']
+  progress Int [not null, default: 0]
+  course Courses [not null]
+  user Users [not null]
 
   indexes {
-    (id_kursu, id_uzytkownika) [unique]
+    (courseId, userId) [unique]
   }
 }
 
-Table wyniki_testow {
+Table TestResults {
   id BigInt [pk, increment]
-  id_testu BigInt [not null]
-  id_uzytkownika BigInt [not null]
-  wynik Int [not null]
-  data_rozpoczecia DateTime [not null]
-  data_zakonczenia DateTime
-  status StatusWyniku [not null, default: 'W_TRAKCIE']
-  test testy [not null]
-  uzytkownik uzytkownicy [not null]
+  testId BigInt [not null]
+  userId BigInt [not null]
+  result Int [not null]
+  startDate DateTime [not null]
+  endDate DateTime
+  status ResultStatus [not null, default: 'IN_PROGRESS']
+  test Tests [not null]
+  user Users [not null]
 }
 
-Enum Rola {
+Enum Role {
   ADMIN
   TEACHER
   STUDENT
 }
 
-Enum PoziomTrudnosci {
-  PODSTAWOWY
-  SREDNIOZAAWANSOWANY
-  ZAAWANSOWANY
+Enum Difficulty {
+  BASIC
+  INTERMEDIATE
+  ADVANCED
 }
 
-Enum StatusKursu {
-  WERSJA_ROBOCZA
-  OPUBLIKOWANY
-  ZARCHIWIZOWANY
+Enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
 }
 
-Enum TypPytania {
-  JEDNOKROTNY_WYBOR
-  WIELOKROTNY_WYBOR
-  PRAWDA_FALSZ
+Enum QuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
 }
 
-Enum TypElementu {
-  NAGLOWEK
-  TEKST
-  OBRAZ
-  WIDEO
-  PLIK
-  KOD
+Enum ElementType {
+  HEADER
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  CODE
 }
 
-Enum StatusZapisu {
-  AKTYWNY
-  UKONCZONY
-  PORZUCONY
+Enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
 }
 
-Enum StatusWyniku {
-  W_TRAKCIE
-  ZAKONCZONY
-  OCENIONY
+Enum ResultStatus {
+  IN_PROGRESS
+  FINISHED
+  GRADED
 }
 
-Ref: kursy.id_tworcy > uzytkownicy.id
+Ref: Courses.creatorId > Users.id
 
-Ref: kursy.id_kategorii > kategorie.id
+Ref: Courses.categoryId > Categories.id
 
-Ref: testy.id_tworcy > uzytkownicy.id
+Ref: Tests.creatorId > Users.id
 
-Ref: testy.kursyId - kursy.id
+Ref: Tests.courseId - Courses.id
 
-Ref: pytania_testowe.id_testu > testy.id
+Ref: TestQuestions.testId > Tests.id
 
-Ref: odpowiedzi.id_pytania > pytania_testowe.id
+Ref: Answers.questionId > TestQuestions.id
 
-Ref: elementy_kursu.id_kursu > kursy.id
+Ref: CourseElements.courseId > Courses.id
 
-Ref: zapisy_na_kursy.id_kursu > kursy.id
+Ref: Enrollments.courseId > Courses.id
 
-Ref: zapisy_na_kursy.id_uzytkownika > uzytkownicy.id
+Ref: Enrollments.userId > Users.id
 
-Ref: wyniki_testow.id_testu > testy.id
+Ref: TestResults.testId > Tests.id
 
-Ref: wyniki_testow.id_uzytkownika > uzytkownicy.id
+Ref: TestResults.userId > Users.id
