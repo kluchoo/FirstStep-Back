@@ -3,9 +3,10 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+  console.log('Authenticate token middleware is being executed...');
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  console.log(authHeader);
+  // console.log(authHeader);
 
   if (!token) {
     return res.sendStatus(401); // Unauthorized

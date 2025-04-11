@@ -3,9 +3,9 @@ import type { NextFunction, Request, Response } from 'express';
 import { ReasonPhrases, StatusCodes } from 'http-status-codes';
 
 export const isAnyRoles = (req: Request, res: Response, next: NextFunction) => {
+  console.log('isAnyRoles middleware is being executed...');
   const user = req.user as { role: string };
   const allowedRoles = Object.values(Role); // Assuming Role is an enum or object with role values
-  console.info('User role:', user.role);
   if (!user) {
     console.error('User not found in request object.');
     return res.status(StatusCodes.UNAUTHORIZED).json({ message: ReasonPhrases.UNAUTHORIZED });

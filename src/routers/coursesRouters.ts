@@ -9,19 +9,22 @@ import {
   updateCourse,
 } from '@/controllers/coursesControlers';
 import { authenticateToken } from '@/middlewares/authMiddleware';
-import { isAnyRoles } from '@/middlewares/isAnyRoles';
+import { isAdminRole } from '@/middlewares/roles/isAdmin';
+import { isAnyRoles } from '@/middlewares/roles/isAnyRoles';
+import { isTeacherRole } from '@/middlewares/roles/isTeacher';
 import { Router } from 'express';
 
 const router: Router = Router();
+router.use(authenticateToken, isAnyRoles); // Apply authentication and role check middleware to all routes
 
-router.get('/', authenticateToken, isAnyRoles, getAllCourses);
-router.get('/id/:id', authenticateToken, isAnyRoles, getCourseById);
-router.get('/:nickname', authenticateToken, isAnyRoles, getUserCourses);
-router.post('/', authenticateToken, isAnyRoles, createCourse);
-router.put('/:id', authenticateToken, isAnyRoles, updateCourse);
-router.delete('/:id', authenticateToken, isAnyRoles, deleteCourse);
+router.get('/', isTeacherRole, getAllCourses);
+router.get('/id/:id', getCourseById);
+router.get('/:nickname', getUserCourses);
+router.post('/', createCourse);
+router.put('/:id', updateCourse);
+router.delete('/:id', deleteCourse);
 
-router.get('/:courseId/elements', authenticateToken, isAnyRoles, getCourseElements);
-router.put('/:courseId/elements', authenticateToken, isAnyRoles, setCoursesElements);
+router.get('/:courseId/elements', getCourseElements);
+router.put('/:courseId/elements', isTeacherRole, setCoursesElements);
 
 export default router;
