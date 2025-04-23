@@ -9,6 +9,7 @@ import {
   updateCourse,
 } from '@/controllers/coursesControlers';
 import { authenticateToken } from '@/middlewares/authMiddleware';
+import { isYourCourse } from '@/middlewares/isYourCouse';
 import { isAdminRole } from '@/middlewares/roles/isAdmin';
 import { isAnyRoles } from '@/middlewares/roles/isAnyRoles';
 import { isTeacherRole } from '@/middlewares/roles/isTeacher';
@@ -20,11 +21,11 @@ router.use(authenticateToken, isAnyRoles); // Apply authentication and role chec
 router.get('/', isTeacherRole, getAllCourses);
 router.get('/id/:id', getCourseById);
 router.get('/:nickname', getUserCourses);
-router.post('/', createCourse);
-router.put('/:id', updateCourse);
-router.delete('/:id', deleteCourse);
+router.post('/', isTeacherRole, createCourse);
+router.put('/:id', isTeacherRole, isYourCourse, updateCourse);
+router.delete('/:id', isTeacherRole, isYourCourse, deleteCourse);
 
 router.get('/:courseId/elements', getCourseElements);
-router.put('/:courseId/elements', isTeacherRole, setCoursesElements);
+router.put('/:courseId/elements', isTeacherRole, isYourCourse, setCoursesElements);
 
 export default router;

@@ -6,6 +6,7 @@ import path, { dirname } from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
 // import { generateSwagger } from './autogen';
+import type { NextFunction, Request, Response } from 'express';
 import { SwaggerTheme, SwaggerThemeNameEnum } from 'swagger-themes';
 import limiter from './middlewares/rateLimitMiddleware';
 import aiRouters from './routers/aiRouters';
@@ -25,9 +26,15 @@ const theme = new SwaggerTheme();
 const options = {
   customCss: theme.getBuffer(SwaggerThemeNameEnum.DARK),
 };
+const corsOptions = {
+  origin: '*',
+  // + FRONT_PORT,
+  optionsSuccessStatus: 200,
+  credentials: true,
+};
 
 const app = express();
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Ignorowanie weryfikacji certyfikatu SSL (tylko do testów lokalnych)
@@ -48,6 +55,11 @@ app.use(express.json());
 //   next();
 // });
 
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log('ip:', req.ip);
+  next();
+});
+
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
 app.use(limiter);
 
@@ -60,10 +72,12 @@ app.use('/ai', aiRouters);
 // kursy
 app.use('/courses', coursesRouters);
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+// filepath: /home/dominik/firststep-back/src/index.ts
+// ...existing code...
+app.listen(process.env.PORT, '0.0.0.0', () => {
+  console.log(`Server is running on http://0.0.0.0:${process.env.PORT}`);
 });
-
+// ...existing code...
 // Uruchom serwer HTTPS
 // const PORT = process.env.PORT || 8443; // Domyślny port HTTPS to 443
 // https.createServer(sslOptions, app).listen(PORT, () => {

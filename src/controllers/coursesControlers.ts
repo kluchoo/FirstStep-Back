@@ -83,7 +83,11 @@ export const getCourseById = async (req: Request, res: Response) => {
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
-    res.status(200).json(course);
+    const serializableCourse = Object.entries(course).reduce((obj, [key, value]) => {
+      obj[key] = typeof value === 'bigint' ? value.toString() : value;
+      return obj;
+    }, {});
+    res.status(200).json(serializableCourse);
   } catch (error) {
     console.error('Error fetching course by ID:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -110,6 +114,28 @@ export const deleteCourse = async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     console.info(`Deleting course with ID: ${id}`);
+    // Delete related records (e.g., tests or course elements) before deleting the course
+    await prisma.answers.deleteMany({
+      where: { question: { test: { courseId: Number(id) } } },
+    });
+    await prisma.testQuestions.deleteMany({
+      where: { test: { courseId: Number(id) } },
+    });
+    await prisma.testResults.deleteMany({
+      where: { test: { courseId: Number(id) } },
+    });
+    await prisma.tests.deleteMany({
+      where: { courseId: Number(id) },
+    });
+    await prisma.courseElements.deleteMany({
+      where: { courseId: Number(id) },
+    });
+    await prisma.enrollments.deleteMany({
+      where: { courseId: Number(id) },
+    });
+    await prisma.courseElementOrder.deleteMany({
+      where: { courseId: Number(id) },
+    });
     await prisma.courses.delete({
       where: { id: Number(id) },
     });
@@ -200,6 +226,8 @@ export const deleteCourseElement = async (req: Request, res: Response) => {
 export const setCoursesElements = async (req: Request, res: Response) => {
   const { courseId } = req.params;
   const { elements: newElements } = req.body;
+  console.log('courseId:', req.params.courseId);
+  console.log('body:', req.body);
 
   try {
     console.info(`Setting course elements for course ID: ${courseId}`);
