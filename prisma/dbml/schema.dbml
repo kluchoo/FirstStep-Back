@@ -25,7 +25,6 @@ Table Categories {
 Table Courses {
   id BigInt [pk, increment]
   creatorId BigInt [not null]
-  categoryId BigInt [not null]
   testId BigInt
   title String [not null]
   description String
@@ -35,7 +34,7 @@ Table Courses {
   studentCount Int [not null, default: 0]
   status CourseStatus [not null, default: 'DRAFT']
   creator Users [not null]
-  category Categories [not null]
+  categories Categories [not null]
   test Tests
   courseElements CourseElements [not null]
   enrollments Enrollments [not null]
@@ -118,6 +117,11 @@ Table TestResults {
   user Users [not null]
 }
 
+Table CourseCategories {
+  coursesId BigInt [ref: > Courses.id]
+  categoriesId BigInt [ref: > Categories.id]
+}
+
 Enum Role {
   ADMIN
   TEACHER
@@ -146,8 +150,6 @@ Enum ElementType {
   HEADER
   TEXT
   IMAGE
-  VIDEO
-  FILE
   CODE
 }
 
@@ -164,8 +166,6 @@ Enum ResultStatus {
 }
 
 Ref: Courses.creatorId > Users.id
-
-Ref: Courses.categoryId > Categories.id
 
 Ref: Tests.creatorId > Users.id
 

@@ -61,7 +61,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
-app.use(limiter);
+// app.use(limiter);
 
 // Logowanie i rejestracja
 app.use('/auth', authRoutes);

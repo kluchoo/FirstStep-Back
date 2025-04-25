@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import type { Request, Response } from 'express';
 
 const prisma = new PrismaClient();
@@ -24,6 +24,25 @@ export const getAllCourses = async (req: Request, res: Response) => {
   }
 };
 
+const getCourseCategories = async (courseId: string) => {
+  try {
+    console.info('Fetching course categories...');
+    const categories = await prisma.categories.findMany({
+      where: {
+        courses: {
+          some: {
+            id: Number(courseId),
+          },
+        },
+      },
+    });
+    return categories;
+  } catch (error) {
+    console.error('Error fetching course categories:', error);
+    throw new Error('Internal server error');
+  }
+};
+
 export const getUserCourses = async (req: Request, res: Response) => {
   const { nickname } = req.params;
   try {
@@ -39,11 +58,27 @@ export const getUserCourses = async (req: Request, res: Response) => {
     const serializableCourses = courses.map((course) => {
       return Object.entries(course).reduce((obj, [key, value]) => {
         obj[key] = typeof value === 'bigint' ? value.toString() : value;
+
         return obj;
       }, {});
     });
 
-    res.status(200).json(serializableCourses);
+    // Fetch categories for each course
+    const coursesWithCategories = await Promise.all(
+      serializableCourses.map(async (course) => {
+        const categories = await getCourseCategories(course.id);
+        // Serializacja BigInt w kategoriach
+        const serializableCategories = categories.map((cat) => {
+          return Object.entries(cat).reduce((obj, [key, value]) => {
+            obj[key] = typeof value === 'bigint' ? value.toString() : value;
+            return obj;
+          }, {});
+        });
+        return { ...course, categories: serializableCategories };
+      }),
+    );
+
+    res.status(200).json(coursesWithCategories);
   } catch (error) {
     console.error('Error fetching user courses:', error);
     res.status(500).json({ error: 'Internal server error' });

@@ -3,7 +3,6 @@ import {
   CourseStatus,
   Difficulty,
   ElementType,
-  EnrollmentStatus,
   PrismaClient,
   QuestionType,
   ResultStatus,
@@ -34,6 +33,18 @@ async function cleanDatabase() {
   await prisma.categories.deleteMany();
   await prisma.users.deleteMany();
 
+  // Automatyczne resetowanie wszystkich sekwencji autoincrement w PostgreSQL
+  const sequences = await prisma.$queryRawUnsafe(
+    `SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public';`,
+  );
+  for (const seq of sequences as Array<{ sequence_name: string }>) {
+    try {
+      await prisma.$executeRawUnsafe(`ALTER SEQUENCE "${seq.sequence_name}" RESTART WITH 1`);
+    } catch (e) {
+      console.warn(`Nie udało się zresetować sekwencji ${seq.sequence_name}:`, e);
+    }
+  }
+
   console.log('Baza danych została wyczyszczona');
 }
 
@@ -61,7 +72,7 @@ async function seedUser(nickname: string, email: string, role: Role, password: s
 }
 
 // Funkcja do seedowania kategorii
-async function seedCategory(name: string, description: string = '') {
+async function seedCategory(name, description = '') {
   try {
     return await prisma.categories.upsert({
       where: { name },
@@ -82,23 +93,24 @@ async function seedCategory(name: string, description: string = '') {
 // Funkcja do seedowania kursu
 async function seedCourse(
   creatorId: bigint,
-  categoryId: bigint,
+  categoryIds: bigint[], // dodano parametr categoryIds
   title: string,
   description: string = '',
   difficultyLevel: Difficulty = Difficulty.BASIC,
   status: CourseStatus = CourseStatus.PUBLISHED,
 ) {
   try {
-    // Tworzymy kurs
+    // Tworzymy kurs z relacją do wielu kategorii
     const course = await prisma.courses.create({
       data: {
         creatorId,
-        categoryId,
         title,
         description,
         difficultyLevel,
         status,
-        // Tworzymy również CourseElementOrder dla tego kursu
+        categories: {
+          connect: categoryIds.map((id) => ({ id: BigInt(id) })),
+        },
         courseOrder: {
           create: {
             lastOrder: 1,
@@ -115,8 +127,14 @@ async function seedCourse(
 }
 
 // Funkcja do seedowania elementów kursu
-async function seedCourseElements(courseId: bigint, elementsCount: number = 5) {
-  const elementTypes = Object.values(ElementType);
+async function seedCourseElements(courseId: bigint, elementsCount = 5) {
+  // Użyj tylko dostępnych typów z enum
+  const elementTypes: ElementType[] = [
+    ElementType.HEADER,
+    ElementType.TEXT,
+    ElementType.IMAGE,
+    ElementType.CODE,
+  ];
 
   try {
     // Pobierz bieżący lastOrder dla tego kursu
@@ -161,12 +179,7 @@ async function seedCourseElements(courseId: bigint, elementsCount: number = 5) {
 }
 
 // Funkcja do seedowania testu dla kursu
-async function seedTest(
-  creatorId: bigint,
-  courseId: bigint,
-  title: string,
-  questionsCount: number = 5,
-) {
+async function seedTest(creatorId: bigint, courseId: bigint, title: string, questionsCount = 5) {
   // Najpierw tworzymy test
   const test = await prisma.tests.create({
     data: {
@@ -332,12 +345,17 @@ async function main() {
 
       for (let i = 0; i < coursesCount; i++) {
         try {
-          const category = faker.helpers.arrayElement(createdCategories);
-          const courseTitle = `${faker.word.adjective()} ${category.name} ${faker.number.int(100)}`;
+          // Losuj 1-2 kategorie dla kursu
+          const courseCategories = faker.helpers.arrayElements(
+            createdCategories,
+            faker.number.int({ min: 1, max: Math.min(2, createdCategories.length) }),
+          );
+          if (courseCategories.length === 0) continue;
+          const courseTitle = `${faker.word.adjective()} ${courseCategories[0].name} ${faker.number.int(100)}`;
 
           const course = await seedCourse(
             teacher.id,
-            category.id,
+            courseCategories.map((cat) => cat.id),
             courseTitle,
             faker.lorem.paragraph(),
             faker.helpers.arrayElement(Object.values(Difficulty)),
@@ -368,7 +386,6 @@ async function main() {
               data: {
                 courseId: course.id,
                 userId: student.id,
-                progress: faker.number.int({ min: 0, max: 100 }),
               },
             });
 
