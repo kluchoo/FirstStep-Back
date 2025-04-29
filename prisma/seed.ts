@@ -14,6 +14,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const IMAGE_PLACEHOLDER = 'http://localhost:3000/uploads/1745770142843-141109177.png';
+const VIDEO_PLACEHOLDER = 'http://localhost:3000/uploads/1745914752310-738194624.mp4'; // #file:seed.ts:17-17
 const isDevelopment = process.env.DEVELOPMENT === 'true';
 
 const prisma = new PrismaClient();
@@ -136,7 +137,7 @@ async function seedCourseElements(courseId: bigint, elementsCount = 5) {
     ElementType.HEADER,
     ElementType.TEXT,
     ElementType.IMAGE,
-    ElementType.CODE,
+    ElementType.VIDEO, // Zamieniam CODE na VIDEO zgodnie z aktualnym schematem
   ];
 
   // Definiujemy stały content dla elementów typu TEXT
@@ -168,6 +169,8 @@ async function seedCourseElements(courseId: bigint, elementsCount = 5) {
         content = textElementContent;
       } else if (type === ElementType.IMAGE) {
         content = IMAGE_PLACEHOLDER;
+      } else if (type === ElementType.VIDEO) {
+        content = VIDEO_PLACEHOLDER;
       } else if (type === ElementType.HEADER) {
         content = faker.lorem.words(3);
       } else {

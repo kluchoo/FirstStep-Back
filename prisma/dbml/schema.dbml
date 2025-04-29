@@ -175,7 +175,7 @@ Enum ElementType {
   HEADER
   TEXT
   IMAGE
-  CODE
+  VIDEO
 }
 
 Enum EnrollmentStatus {
