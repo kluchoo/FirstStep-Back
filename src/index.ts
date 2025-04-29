@@ -12,6 +12,7 @@ import limiter from './middlewares/rateLimitMiddleware';
 import aiRouters from './routers/aiRouters';
 import authRoutes from './routers/authRoutes';
 import coursesRouters from './routers/coursesRouters.js';
+import fileRoutes from './routers/fileRoutes.js';
 
 // Generowanie Swaggera
 // generateSwagger();
@@ -35,24 +36,17 @@ const corsOptions = {
 
 const app = express();
 app.use(cors(corsOptions));
-app.use(express.json());
+// Zwiększenie limitu rozmiaru ciała żądania
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Konfiguracja dostępu do plików statycznych z katalogu uploads
+const uploadDir = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadDir));
 
 // Ignorowanie weryfikacji certyfikatu SSL (tylko do testów lokalnych)
 // const agent = new https.Agent({
 //   rejectUnauthorized: false, // Ignoruj błędy certyfikatu
-// });
-
-// Wczytaj certyfikaty SSL
-// const sslOptions = {
-//   key: fs.readFileSync(path.join(__dirname, 'certs', 'key.pem')), // Ścieżka do klucza prywatnego
-//   cert: fs.readFileSync(path.join(__dirname, 'certs', 'cert.pem')), // Ścieżka do certyfikatu
-// };
-
-// app.use((req, res, next) => {
-//   if (!req.secure) {
-//     return res.redirect(`http://${req.headers.host}${req.url}`);
-//   }
-//   next();
 // });
 
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -72,8 +66,10 @@ app.use('/ai', aiRouters);
 // kursy
 app.use('/courses', coursesRouters);
 
+// pliki
+app.use('/files', fileRoutes);
+
 // filepath: /home/dominik/firststep-back/src/index.ts
-// ...existing code...
 app.listen(process.env.PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${process.env.PORT}`);
 });

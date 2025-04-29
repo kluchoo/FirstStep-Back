@@ -19,6 +19,10 @@
     {
       "name": "ai",
       "description": "AI operations"
+    },
+    {
+      "name": "Files",
+      "description": "File operations"
     }
   ],
   "securityDefinitions": {
@@ -685,6 +689,90 @@
           },
           "500": {
             "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/files/upload": {
+      "post": {
+        "summary": "Przesyła nowy plik (obraz)",
+        "tags": ["Files"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {
+            "in": "formData",
+            "name": "file",
+            "type": "file",
+            "required": true,
+            "description": "Plik do przesłania (obraz)"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Plik został pomyślnie przesłany"
+          },
+          "400": {
+            "description": "Błędne żądanie"
+          },
+          "401": {
+            "description": "Brak autoryzacji"
+          }
+        }
+      }
+    },
+    "/files": {
+      "get": {
+        "summary": "Pobiera listę plików użytkownika",
+        "tags": ["Files"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista plików użytkownika"
+          },
+          "401": {
+            "description": "Brak autoryzacji"
+          }
+        }
+      }
+    },
+    "/files/{id}": {
+      "delete": {
+        "summary": "Usuwa plik",
+        "tags": ["Files"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "ID pliku do usunięcia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plik został pomyślnie usunięty"
+          },
+          "401": {
+            "description": "Brak autoryzacji"
+          },
+          "404": {
+            "description": "Plik nie został znaleziony"
           }
         }
       }

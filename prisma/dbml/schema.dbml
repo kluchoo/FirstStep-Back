@@ -13,6 +13,7 @@ Table Users {
   createdTests Tests [not null]
   courseEnrollments Enrollments [not null]
   testResults TestResults [not null]
+  uploads FileUploads [not null]
 }
 
 Table Categories {
@@ -88,6 +89,7 @@ Table CourseElements {
   order Int [not null]
   additionalData Json
   course Courses [not null]
+  elementsStyles ElementsStyle [not null]
 }
 
 Table Enrollments {
@@ -96,7 +98,6 @@ Table Enrollments {
   userId BigInt [not null]
   enrollmentDate DateTime [default: `now()`, not null]
   status EnrollmentStatus [not null, default: 'ACTIVE']
-  progress Int [not null, default: 0]
   course Courses [not null]
   user Users [not null]
 
@@ -114,6 +115,30 @@ Table TestResults {
   endDate DateTime
   status ResultStatus [not null, default: 'IN_PROGRESS']
   test Tests [not null]
+  user Users [not null]
+}
+
+Table ElementsStyle {
+  id BigInt [pk, increment]
+  courseElementId BigInt [not null]
+  isBold Boolean [not null, default: false]
+  isItalic Boolean [not null, default: false]
+  color String
+  fontSize Float
+  isUnderline Boolean [not null, default: false]
+  hasHighlight Boolean [not null, default: false]
+  courseElement CourseElements [not null]
+}
+
+Table FileUploads {
+  id BigInt [pk, increment]
+  filename String [not null]
+  originalName String [not null]
+  path String [not null]
+  mimeType String [not null]
+  size Int [not null]
+  uploadDate DateTime [default: `now()`, not null]
+  userId BigInt [not null]
   user Users [not null]
 }
 
@@ -186,3 +211,7 @@ Ref: Enrollments.userId > Users.id
 Ref: TestResults.testId > Tests.id
 
 Ref: TestResults.userId > Users.id
+
+Ref: ElementsStyle.courseElementId > CourseElements.id
+
+Ref: FileUploads.userId > Users.id

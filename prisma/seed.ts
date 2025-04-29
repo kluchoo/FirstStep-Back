@@ -13,6 +13,7 @@ import * as dotenv from 'dotenv';
 // Załaduj zmienne środowiskowe
 dotenv.config();
 
+const IMAGE_PLACEHOLDER = 'http://localhost:3000/uploads/1745770142843-141109177.png';
 const isDevelopment = process.env.DEVELOPMENT === 'true';
 
 const prisma = new PrismaClient();
@@ -27,10 +28,12 @@ async function cleanDatabase() {
   await prisma.testResults.deleteMany();
   await prisma.tests.deleteMany();
   await prisma.enrollments.deleteMany();
+  await prisma.elementsStyle.deleteMany(); // Najpierw usuwamy style elementów
   await prisma.courseElements.deleteMany();
   await prisma.courseElementOrder.deleteMany();
   await prisma.courses.deleteMany();
   await prisma.categories.deleteMany();
+  await prisma.fileUploads.deleteMany(); // Dodajemy usuwanie plików przed użytkownikami
   await prisma.users.deleteMany();
 
   // Automatyczne resetowanie wszystkich sekwencji autoincrement w PostgreSQL
@@ -136,6 +139,8 @@ async function seedCourseElements(courseId: bigint, elementsCount = 5) {
     ElementType.CODE,
   ];
 
+  // Definiujemy stały content dla elementów typu TEXT
+  const textElementContent = `[{"insert":"Lorem ","attributes":{"bold":true}},{"insert":"ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis elementum felis in mollis. Cras pellentesque massa a magna malesuada dignissim. Cras est metus, gravida nec nisi in, venenatis posuere sem. Nullam eleifend sed ante non dapibus. Suspendisse ac neque vel nisi dapibus tempor sed non enim. Donec nulla leo, viverra sit amet nunc egestas, scelerisque lobortis nisl. Sed sodales egestas mauris. Aenean egestas libero at ornare semper. Nam purus nisl, semper id felis eu, bibendum dapibus nunc. Donec scelerisque neque mauris, sit amet eleifend ipsum blandit a. Integer et aliquet sapien. Aliquam ultrices ex ac ex condimentum, vel consequat lectus semper.\\n"}]`;
   try {
     // Pobierz bieżący lastOrder dla tego kursu
     let courseOrder = await prisma.courseElementOrder.findUnique({
@@ -156,13 +161,38 @@ async function seedCourseElements(courseId: bigint, elementsCount = 5) {
     // Tworzymy elementy kursu
     for (let i = 0; i < elementsCount; i++) {
       const type = faker.helpers.arrayElement(elementTypes);
-      await prisma.courseElements.create({
+      let content;
+
+      // Wybieramy odpowiednią zawartość w zależności od typu elementu
+      if (type === ElementType.TEXT) {
+        content = textElementContent;
+      } else if (type === ElementType.IMAGE) {
+        content = IMAGE_PLACEHOLDER;
+      } else if (type === ElementType.HEADER) {
+        content = faker.lorem.words(3);
+      } else {
+        content = faker.lorem.paragraph();
+      }
+
+      const element = await prisma.courseElements.create({
         data: {
           courseId,
           type,
-          content: faker.lorem.paragraphs(3),
+          content,
           order: currentOrder + i,
           additionalData: {},
+        },
+      });
+      // Dodajemy styl do elementu kursu
+      await prisma.elementsStyle.create({
+        data: {
+          courseElementId: element.id,
+          isBold: faker.datatype.boolean(),
+          isItalic: faker.datatype.boolean(),
+          isUnderline: faker.datatype.boolean(),
+          hasHighlight: faker.datatype.boolean(),
+          color: faker.color.rgb({ prefix: '#', casing: 'lower' }),
+          fontSize: faker.number.float({ min: 10, max: 32, fractionDigits: 1 }),
         },
       });
     }

@@ -22,6 +22,7 @@ model Users {
   createdTests      Tests[]
   courseEnrollments Enrollments[]
   testResults       TestResults[]
+  uploads           FileUploads[]
 }
 
 enum Role {
@@ -114,13 +115,14 @@ model CourseElementOrder {
 }
 
 model CourseElements {
-  id             BigInt      @id @default(autoincrement())
+  id             BigInt          @id @default(autoincrement())
   courseId       BigInt
   type           ElementType
-  content        String      @db.Text
+  content        String          @db.Text
   order          Int
   additionalData Json?
-  course         Courses     @relation(fields: [courseId], references: [id])
+  course         Courses         @relation(fields: [courseId], references: [id])
+  elementsStyles ElementsStyle[]
 }
 
 enum ElementType {
@@ -164,4 +166,30 @@ enum ResultStatus {
   IN_PROGRESS
   FINISHED
   GRADED
+}
+
+model ElementsStyle {
+  id              BigInt         @id @default(autoincrement())
+  courseElementId BigInt
+  isBold          Boolean        @default(false)
+  isItalic        Boolean        @default(false)
+  color           String?        @db.VarChar(20)
+  fontSize        Float?
+  isUnderline     Boolean        @default(false)
+  hasHighlight    Boolean        @default(false)
+  courseElement   CourseElements @relation(fields: [courseElementId], references: [id])
+
+  @@index([courseElementId])
+}
+
+model FileUploads {
+  id           BigInt   @id @default(autoincrement())
+  filename     String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  path         String   @db.VarChar(255)
+  mimeType     String   @db.VarChar(100)
+  size         Int
+  uploadDate   DateTime @default(now()) @db.Timestamp
+  userId       BigInt
+  user         Users    @relation(fields: [userId], references: [id])
 }
