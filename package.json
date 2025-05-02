@@ -2,20 +2,24 @@
   "name": "@dominikzuchowicz/firststep",
   "version": "2.0.0",
   "type": "module",
-  "packageManager": "pnpm@10.0.0",
+  "packageManager": "bun@1.0.30",
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "bun run prisma/seed.ts"
   },
   "scripts": {
-    "autogen": "tsx ./src/autogen.ts",
-    "dev": "tsx watch src/index.ts",
+    "autogen": "bun run ./src/autogen.ts",
+    "dev": "bun --hot src/index.ts",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
-    "build": "pnpm clean && tsc -p tsconfig.prod.json && tsc-alias -p tsconfig.prod.json",
-    "prepublishOnly": "npm run build",
+    "build": "bun run clean && tsc -p tsconfig.prod.json && tsc-alias -p tsconfig.prod.json",
+    "prepublishOnly": "bun run build",
     "lint": "eslint --fix",
     "lint:prettier": "prettier --check . --ignore-path .gitignore",
-    "format": "prettier --write ./"
+    "format": "prettier --write ./",
+    "wsl-setup": "chmod +x ./wsl-setup.sh && ./wsl-setup.sh",
+    "prisma:generate": "bunx prisma generate && bunx prisma-dbml-generator",
+    "prisma:migrate": "bunx prisma migrate dev",
+    "prisma:studio": "bunx prisma studio"
   },
   "author": "kidi",
   "license": "MIT",
