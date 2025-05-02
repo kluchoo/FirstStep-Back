@@ -1,30 +1,29 @@
-# Używamy uniwersalnego obrazu deweloperskiego od Microsoft jako obrazu bazowego
-FROM mcr.microsoft.com/devcontainers/typescript-node:latest
-ENV DEBIAN_FRONTEND=noninteractive 
+FROM mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye
 
-# Instalacja Bun - bezpośrednia instalacja w globalnej ścieżce
-RUN curl -fsSL https://bun.sh/install | bash && \
-    mkdir -p /usr/local/bun && \
-    cp -r $HOME/.bun/* /usr/local/bun/ && \
-    echo 'export BUN_INSTALL="/usr/local/bun"' >> /etc/bash.bashrc && \
-    echo 'export PATH="/usr/local/bun/bin:$PATH"' >> /etc/bash.bashrc && \
-    ln -s /usr/local/bun/bin/bun /usr/local/bin/bun
+# Instalacja dodatkowych narzędzi
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends \
+    curl \
+    wget \
+    git \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    apt-transport-https
 
-# Kopiowanie i przygotowanie skryptu prisma
-COPY prisma.sh /usr/local/bin/prisma.sh
-RUN chmod +x /usr/local/bin/prisma.sh
+# Instalacja Bun
+USER node
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/home/node/.bun/bin:${PATH}"
 
-RUN set -ex && \
-    chmod +x /etc/bash.bashrc && \
-    echo 'alias stepus="docker exec -it stepus ollama run stepus"' >> /etc/bash.bashrc && \
-    echo 'alias baza="bunx prisma generate"' >> /etc/bash.bashrc && \
-    # Clean up
-    apt-get clean && \
-    apt-get autoremove -y && \
-    rm -rf \
-    /var/lib/apt/lists/* \
-    /tmp/* \
-    /var/tmp/* \
-    /usr/share/doc/* \
-    /usr/share/man/* \
-    /var/log/*
+# Przejdź z powrotem do roota dla pozostałych instalacji
+USER root
+
+# Dodaj bash alias dla Bun
+RUN echo 'export PATH="/home/node/.bun/bin:$PATH"' >> /home/node/.bashrc \
+    && echo 'alias baza="bunx prisma generate && bunx prisma-dbml-generator"' >> /home/node/.bashrc
+
+# Czyszczenie
+RUN apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*

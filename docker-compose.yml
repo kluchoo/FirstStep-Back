@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: FirstStep
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - FirstStep
+
+  stepus:
+    build:
+      context: ./AI
+      dockerfile: Dockerfile
+    container_name: stepus
+    ports:
+      - '8080:11434'
+    networks:
+      - FirstStep
+    restart: unless-stopped
+    volumes:
+      - stepus_data:/root/.ollama
+
+networks:
+  FirstStep:
+    external: true
+
+volumes:
+  postgres_data:
+  stepus_data:
