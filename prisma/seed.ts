@@ -9,6 +9,7 @@ import {
   Role,
 } from '@prisma/client';
 import * as dotenv from 'dotenv';
+import { json } from 'express';
 
 // Załaduj zmienne środowiskowe
 dotenv.config();
@@ -172,7 +173,7 @@ async function seedCourseElements(courseId: bigint, elementsCount = 5) {
       } else if (type === ElementType.VIDEO) {
         content = VIDEO_PLACEHOLDER;
       } else if (type === ElementType.HEADER) {
-        content = faker.lorem.words(3);
+        content = `[{"insert":"Nowy nagłówek\\n"}]`;
       } else {
         content = faker.lorem.paragraph();
       }
