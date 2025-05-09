@@ -75,7 +75,12 @@ if (!process.env.PORT) {
   process.exit(1); // Exit the process with an error code
 }
 
-app.listen(`0.0.0.0:${process.env.PORT}`, () => {
+// app.listen(`0.0.0.0:${process.env.PORT}`, () => {
+//   console.log(`Server is running on http://0.0.0.0:${process.env.PORT}`);
+// });
+const PORT = parseInt(process.env.PORT);
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${process.env.PORT}`);
 });
 // ...existing code...

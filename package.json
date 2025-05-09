@@ -7,6 +7,7 @@
     "seed": "bun run prisma/seed.ts"
   },
   "scripts": {
+    "prod": "bunx prisma migrate deploy && bun run src/index.js",
     "autogen": "bun run ./src/autogen.ts",
     "dev": "bun --hot src/index.ts",
     "type-check": "tsc --noEmit",
@@ -16,10 +17,7 @@
     "lint": "eslint --fix",
     "lint:prettier": "prettier --check . --ignore-path .gitignore",
     "format": "prettier --write ./",
-    "wsl-setup": "chmod +x ./wsl-setup.sh && ./wsl-setup.sh",
-    "prisma:generate": "bunx prisma generate && bunx prisma-dbml-generator",
-    "prisma:migrate": "bunx prisma migrate dev",
-    "prisma:studio": "bunx prisma studio"
+    "prisma:migrate": "bunx prisma migrate dev"
   },
   "author": "kidi",
   "license": "MIT",
@@ -36,7 +34,6 @@
     "eslint": "^8.57.1",
     "globals": "^15.15.0",
     "prettier-plugin-organize-imports": "^4.1.0",
-    "prisma-dbml-generator": "^0.12.0",
     "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.15",

@@ -9,13 +9,12 @@ import {
   Role,
 } from '@prisma/client';
 import * as dotenv from 'dotenv';
-import { json } from 'express';
 
 // Załaduj zmienne środowiskowe
 dotenv.config();
 
 const IMAGE_PLACEHOLDER = 'http://localhost:3000/uploads/1745770142843-141109177.png';
-const VIDEO_PLACEHOLDER = 'http://localhost:3000/uploads/1745914752310-738194624.mp4'; // #file:seed.ts:17-17
+const VIDEO_PLACEHOLDER = 'http://localhost:3000/uploads/1745914752310-738194624.mp4';
 const isDevelopment = process.env.DEVELOPMENT === 'true';
 
 const prisma = new PrismaClient();
