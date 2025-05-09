@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 // import { generateSwagger } from './autogen';
 import type { NextFunction, Request, Response } from 'express';
 import { SwaggerTheme, SwaggerThemeNameEnum } from 'swagger-themes';
-import limiter from './middlewares/rateLimitMiddleware';
+// import limiter from './middlewares/rateLimitMiddleware';
 import aiRouters from './routers/aiRouters';
 import authRoutes from './routers/authRoutes';
 import coursesRouters from './routers/coursesRouters.js';
@@ -70,7 +70,12 @@ app.use('/courses', coursesRouters);
 app.use('/files', fileRoutes);
 
 // filepath: /home/dominik/firststep-back/src/index.ts
-app.listen(process.env.PORT, '0.0.0.0', () => {
+if (!process.env.PORT) {
+  console.error('PORT environment variable is not set. Please set it in your .env file.');
+  process.exit(1); // Exit the process with an error code
+}
+
+app.listen(`0.0.0.0:${process.env.PORT}`, () => {
   console.log(`Server is running on http://0.0.0.0:${process.env.PORT}`);
 });
 // ...existing code...

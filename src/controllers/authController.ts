@@ -5,12 +5,14 @@ import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
-
-const secretKey = !process.env.SECRET_KEY;
+const secretKey = process.env.SECRET_KEY;
+if (!secretKey) {
+  throw new Error('SECRET_KEY is not configured');
+}
 const iv = Buffer.alloc(16, 0);
 
 export const decryptPassword = (encryptedPassword: string): string => {
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(secretKey), iv);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(secretKey as string), iv);
   let decrypted = decipher.update(encryptedPassword, 'base64', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;

@@ -1,17 +1,20 @@
-import { PrismaClient, Role } from '@prisma/client';
-import type { NextFunction, Request, Response } from 'express';
+import type { RequestWithUser } from '@/types/requestWithUser';
+import { Role } from '@prisma/client';
+import type { NextFunction, Response } from 'express';
 import { ReasonPhrases, StatusCodes } from 'http-status-codes';
 
-export const isTeacherRole = (req: Request, res: Response, next: NextFunction) => {
+export const isTeacherRole = (req: RequestWithUser, res: Response, next: NextFunction) => {
   console.log('isTeacherRole middleware is being executed...');
-  const user = req.user as { role: string };
-  const allowedRoles = [Role.TEACHER, Role.ADMIN]; // Assuming Role is an enum or object with role values
+  const user = req.user;
+  const allowedRoles: Role[] = [Role.TEACHER, Role.ADMIN];
   if (!user) {
     console.error('User not found in request object.');
     return res.status(StatusCodes.UNAUTHORIZED).json({ message: ReasonPhrases.UNAUTHORIZED });
   }
 
-  if (!allowedRoles.includes(user.role)) {
+  const role = user.role as Role;
+
+  if (!allowedRoles.includes(role)) {
     return res.status(StatusCodes.FORBIDDEN).json({ message: ReasonPhrases.FORBIDDEN });
   }
   console.info('User role is valid');

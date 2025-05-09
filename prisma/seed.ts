@@ -77,7 +77,7 @@ async function seedUser(nickname: string, email: string, role: Role, password: s
 }
 
 // Funkcja do seedowania kategorii
-async function seedCategory(name, description = '') {
+async function seedCategory(name: string, description = '') {
   try {
     return await prisma.categories.upsert({
       where: { name },
@@ -385,7 +385,7 @@ async function main() {
             faker.number.int({ min: 1, max: Math.min(2, createdCategories.length) }),
           );
           if (courseCategories.length === 0) continue;
-          const courseTitle = `${faker.word.adjective()} ${courseCategories[0].name} ${faker.number.int(100)}`;
+          const courseTitle = `${faker.word.adjective()} ${courseCategories[0]?.name} ${faker.number.int(100)}`;
 
           const course = await seedCourse(
             teacher.id,

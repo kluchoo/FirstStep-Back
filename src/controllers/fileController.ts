@@ -1,3 +1,4 @@
+import type { RequestWithUser } from '@/types/requestWithUser';
 import { PrismaClient } from '@prisma/client';
 import type { Request, Response } from 'express';
 import fs from 'fs';
@@ -53,7 +54,7 @@ export const upload = multer({
 });
 
 // Kontroler do przesyłania plików
-export const uploadFile = async (req: Request, res: Response) => {
+export const uploadFile = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Brak pliku do przesłania.' });
@@ -108,7 +109,7 @@ export const uploadFile = async (req: Request, res: Response) => {
 };
 
 // Kontroler do pobierania listy plików użytkownika
-export const getUserFiles = async (req: Request, res: Response) => {
+export const getUserFiles = async (req: RequestWithUser, res: Response) => {
   try {
     const userId = req.user.id; // Z middleware autoryzacji
 
@@ -147,7 +148,7 @@ export const getUserFiles = async (req: Request, res: Response) => {
 };
 
 // Kontroler do usuwania pliku
-export const deleteFile = async (req: Request, res: Response) => {
+export const deleteFile = async (req: RequestWithUser, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user.id; // Z middleware autoryzacji
@@ -158,7 +159,9 @@ export const deleteFile = async (req: Request, res: Response) => {
         .status(401)
         .json({ error: 'Użytkownik niezalogowany. Aby usunąć plik, musisz być zalogowany.' });
     }
-
+    if (!id) {
+      return res.status(400).json({ error: 'ID pliku jest wymagane.' });
+    }
     // Znajdź plik, upewniając się, że należy do zalogowanego użytkownika
     const file = await prisma.fileUploads.findFirst({
       where: {

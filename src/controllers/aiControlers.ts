@@ -2,6 +2,11 @@ import axios from 'axios';
 import { debug } from 'console';
 import type { Request, Response } from 'express';
 
+interface Message {
+  role: string;
+  content: string;
+}
+
 export const askAi = async (req: Request, res: Response) => {
   try {
     debug('Received request to ask AI:', req.body);
@@ -14,8 +19,8 @@ export const askAi = async (req: Request, res: Response) => {
     }
 
     // Sprawdź, czy każda wiadomość ma odpowiednią strukturę
-    const isValidMessages = messages.every(
-      (msg: any) => typeof msg.role === 'string' && typeof msg.content === 'string',
+    const isValidMessages = (messages as Message[]).every(
+      (msg) => typeof msg.role === 'string' && typeof msg.content === 'string',
     );
 
     if (!isValidMessages) {
@@ -37,12 +42,8 @@ export const askAi = async (req: Request, res: Response) => {
 
     // Zwróć odpowiedź AI
     return res.status(200).json({ message: aiResponse });
-  } catch (e) {
-    if (axios.isAxiosError(e)) {
-      console.error('Axios error:', e.response?.data || e.message);
-    } else {
-      console.error('Unexpected error:', e);
-    }
+  } catch (e: unknown) {
+    console.error('Unexpected error:', e);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

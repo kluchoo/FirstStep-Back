@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import type { RequestWithUser } from '@/types/requestWithUser';
+import { Difficulty, PrismaClient } from '@prisma/client';
 import type { Request, Response } from 'express';
 import path from 'path';
 
@@ -12,10 +13,13 @@ export const getAllCourses = async (req: Request, res: Response) => {
     // Konwersja wartości BigInt na stringi
     const serializableCourses = courses.map((course) => {
       // Tworzenie nowego obiektu z przekształconymi wartościami BigInt
-      return Object.entries(course).reduce((obj, [key, value]) => {
-        obj[key] = typeof value === 'bigint' ? value.toString() : value;
-        return obj;
-      }, {});
+      return Object.entries(course).reduce(
+        (obj: Record<string, unknown>, [key, value]) => {
+          obj[key] = typeof value === 'bigint' ? value.toString() : value;
+          return obj;
+        },
+        {} as Record<string, unknown>,
+      );
     });
 
     res.status(200).json(serializableCourses);
@@ -38,16 +42,18 @@ export const getUserCourses = async (req: Request, res: Response) => {
     });
 
     const serializableCourses = courses.map((course) => {
-      return Object.entries(course).reduce((obj, [key, value]) => {
-        obj[key] = typeof value === 'bigint' ? value.toString() : value;
-
-        return obj;
-      }, {});
+      return Object.entries(course).reduce(
+        (obj: Record<string, unknown>, [key, value]) => {
+          obj[key] = typeof value === 'bigint' ? value.toString() : value;
+          return obj;
+        },
+        {} as Record<string, unknown>,
+      );
     });
 
     // Fetch student count for each course
     const coursesWithStudentCount = await Promise.all(
-      serializableCourses.map(async (course) => {
+      serializableCourses.map(async (course: any) => {
         const studentCount = await getCourseStudentCount(course.id);
         return { ...course, studentCount };
       }),
@@ -55,21 +61,24 @@ export const getUserCourses = async (req: Request, res: Response) => {
 
     // Fetch categories for each course
     const coursesWithCategories = await Promise.all(
-      serializableCourses.map(async (course) => {
+      serializableCourses.map(async (course: any) => {
         const categories = await getCourseCategories(course.id);
         // Serializacja BigInt w kategoriach
         const serializableCategories = categories.map((cat) => {
-          return Object.entries(cat).reduce((obj, [key, value]) => {
-            obj[key] = typeof value === 'bigint' ? value.toString() : value;
-            return obj;
-          }, {});
+          return Object.entries(cat).reduce(
+            (obj: Record<string, unknown>, [key, value]) => {
+              obj[key] = typeof value === 'bigint' ? value.toString() : value;
+              return obj;
+            },
+            {} as Record<string, unknown>,
+          );
         });
         return { ...course, categories: serializableCategories };
       }),
     );
 
-    const coursesWithStudentCountAndCategories = coursesWithStudentCount.map((course) => {
-      const courseWithCategories = coursesWithCategories.find((c) => c.id === course.id);
+    const coursesWithStudentCountAndCategories = coursesWithStudentCount.map((course: any) => {
+      const courseWithCategories = coursesWithCategories.find((c: any) => c.id === course.id);
       return { ...course, categories: courseWithCategories?.categories || [] };
     });
 
@@ -80,19 +89,19 @@ export const getUserCourses = async (req: Request, res: Response) => {
   }
 };
 
-export const createCourse = async (req: Request, res: Response) => {
-  const { title, description, difficultyLevel, status, category } = req.body;
+export const createCourse = async (req: RequestWithUser, res: Response) => {
+  const { title, description, difficultyLevel, status } = req.body;
   try {
     console.info('Creating a new course...');
+    const user = req.user as { id: string | number | bigint };
     const newCourse = await prisma.courses.create({
       data: {
         title,
         description,
         difficultyLevel,
         status,
-        category, // Ensure category is provided in the request body
         creator: {
-          connect: { id: req.userId }, // Assuming req.userId contains the ID of the authenticated user
+          connect: { id: BigInt(user.id) },
         },
       },
     });
@@ -113,10 +122,13 @@ export const getCourseById = async (req: Request, res: Response) => {
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
-    const serializableCourse = Object.entries(course).reduce((obj, [key, value]) => {
-      obj[key] = typeof value === 'bigint' ? value.toString() : value;
-      return obj;
-    }, {});
+    const serializableCourse = Object.entries(course).reduce(
+      (obj: Record<string, unknown>, [key, value]) => {
+        obj[key] = typeof value === 'bigint' ? value.toString() : value;
+        return obj;
+      },
+      {} as Record<string, unknown>,
+    );
     res.status(200).json(serializableCourse);
   } catch (error) {
     console.error('Error fetching course by ID:', error);
@@ -126,14 +138,49 @@ export const getCourseById = async (req: Request, res: Response) => {
 
 export const updateCourse = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { title, description, difficultyLevel, status } = req.body;
+  const { title, description, difficultyLevel, status, categories } = req.body;
   try {
     console.info(`Updating course with ID: ${id}`);
+    // Walidacja difficultyLevel
+    if (difficultyLevel && !Object.values(Difficulty).includes(difficultyLevel)) {
+      return res.status(400).json({
+        error: `Nieprawidłowa wartość difficultyLevel. Dozwolone: ${Object.values(Difficulty).join(', ')}`,
+      });
+    }
+    // Przygotuj dane do aktualizacji
+    const updateData: any = { title, description, difficultyLevel, status };
+    // Jeśli przesłano kategorie, zaktualizuj relację
+    if (Array.isArray(categories)) {
+      updateData.categories = {
+        set: categories.map((cat: any) => ({ id: BigInt(cat.id) })),
+      };
+    }
     const updatedCourse = await prisma.courses.update({
       where: { id: Number(id) },
-      data: { title, description, difficultyLevel, status },
+      data: updateData,
+      include: { categories: true },
     });
-    res.status(200).json(updatedCourse);
+    // Serializacja BigInt na string
+    const serializableCourse = Object.entries(updatedCourse).reduce(
+      (obj: Record<string, unknown>, [key, value]) => {
+        if (key === 'categories' && Array.isArray(value)) {
+          obj[key] = value.map((cat) =>
+            Object.entries(cat).reduce(
+              (catObj: Record<string, unknown>, [catKey, catValue]) => {
+                catObj[catKey] = typeof catValue === 'bigint' ? catValue.toString() : catValue;
+                return catObj;
+              },
+              {} as Record<string, unknown>,
+            ),
+          );
+        } else {
+          obj[key] = typeof value === 'bigint' ? value.toString() : value;
+        }
+        return obj;
+      },
+      {} as Record<string, unknown>,
+    );
+    res.status(200).json(serializableCourse);
   } catch (error) {
     console.error('Error updating course:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -205,10 +252,13 @@ export const getCourseElements = async (req: Request, res: Response) => {
     const serializableCourseElements = courseElementsWithStyles.map((element) => {
       // Serializuj BigInt również w tablicy stylów
       const serializableStyles = (element.styles || []).map((style: any) => {
-        return Object.entries(style).reduce((obj, [key, value]) => {
-          obj[key] = typeof value === 'bigint' ? value.toString() : value;
-          return obj;
-        }, {});
+        return Object.entries(style).reduce(
+          (obj: Record<string, unknown>, [key, value]) => {
+            obj[key] = typeof value === 'bigint' ? value.toString() : value;
+            return obj;
+          },
+          {} as Record<string, unknown>,
+        );
       });
       // Serializuj BigInt w głównym obiekcie elementu
       const serializableElement = Object.entries(element).reduce(
@@ -234,8 +284,7 @@ export const getCourseElements = async (req: Request, res: Response) => {
 
 export const createNextCourseElements = async (req: Request, res: Response) => {
   const { courseId } = req.params;
-  const { type, content } = req.body;
-  // const order = await prisma.courseElements.count({ where: { courseId: Number(courseId) } });
+  const { type, content, order } = req.body;
   try {
     console.info('Creating a new course element...');
     const newCourseElement = await prisma.courseElements.create({
@@ -243,7 +292,7 @@ export const createNextCourseElements = async (req: Request, res: Response) => {
         courseId: Number(courseId),
         type,
         content,
-        // order: order + 1,
+        order: order ?? 0,
       },
     });
     res.status(201).json(newCourseElement);
@@ -319,7 +368,7 @@ export const setCoursesElements = async (req: Request, res: Response) => {
     });
 
     // Identyfikujemy elementy do usunięcia (te, które są w bazie, ale nie w żądaniu)
-    const elementIdsToKeep = newElements
+    const elementIdsToKeep = (newElements as any[])
       .map((element) => (element.id ? Number(element.id) : undefined))
       .filter((id) => id !== undefined);
 
@@ -351,7 +400,7 @@ export const setCoursesElements = async (req: Request, res: Response) => {
 
     // Aktualizujemy lub tworzymy elementy z żądania
     const processedElements = await Promise.all(
-      newElements.map(async (element) => {
+      (newElements as any[]).map(async (element) => {
         const elementId = element.id ? Number(element.id) : undefined;
         let updatedOrCreatedElement;
 
@@ -381,7 +430,7 @@ export const setCoursesElements = async (req: Request, res: Response) => {
 
         // Teraz obsługujemy style dla tego elementu
         if (element.styles && element.styles.length > 0) {
-          const style = element.styles[0]; // Zakładamy, że jeden element ma jeden styl
+          const style = element.styles[0];
 
           // Sprawdzamy, czy styl istnieje dla tego elementu
           if (existingStylesMap.has(Number(updatedOrCreatedElement.id))) {
@@ -435,21 +484,27 @@ export const setCoursesElements = async (req: Request, res: Response) => {
     const serializableProcessedElements = updatedElements.map((element) => {
       // Konwertuj style
       const serializableStyles = element.elementsStyles.map((style) => {
-        return Object.entries(style).reduce((obj, [key, value]) => {
-          obj[key] = typeof value === 'bigint' ? value.toString() : value;
-          return obj;
-        }, {});
+        return Object.entries(style).reduce(
+          (obj: Record<string, unknown>, [key, value]) => {
+            obj[key] = typeof value === 'bigint' ? value.toString() : value;
+            return obj;
+          },
+          {} as Record<string, unknown>,
+        );
       });
 
       // Konwertuj element główny
-      const serializableElement = Object.entries(element).reduce((obj, [key, value]) => {
-        if (key === 'elementsStyles') {
-          obj['styles'] = serializableStyles; // Zmiana nazwy klucza z elementsStyles na styles dla zgodności z frontendem
-        } else {
-          obj[key] = typeof value === 'bigint' ? value.toString() : value;
-        }
-        return obj;
-      }, {});
+      const serializableElement = Object.entries(element).reduce(
+        (obj: Record<string, unknown>, [key, value]) => {
+          if (key === 'elementsStyles') {
+            obj['styles'] = serializableStyles;
+          } else {
+            obj[key] = typeof value === 'bigint' ? value.toString() : value;
+          }
+          return obj;
+        },
+        {} as Record<string, unknown>,
+      );
 
       return serializableElement;
     });
@@ -462,9 +517,12 @@ export const setCoursesElements = async (req: Request, res: Response) => {
 };
 
 // Nowy kontroler do obsługi zdjęć w elementach kursu
-export const uploadImageForCourseElement = async (req: Request, res: Response) => {
+export const uploadImageForCourseElement = async (req: RequestWithUser, res: Response) => {
   try {
     const { elementId } = req.params;
+    if (!elementId) {
+      return res.status(400).json({ error: 'Brak ID elementu kursu.' });
+    }
 
     if (!req.file) {
       return res.status(400).json({ error: 'Brak pliku do przesłania.' });
@@ -472,7 +530,7 @@ export const uploadImageForCourseElement = async (req: Request, res: Response) =
 
     // Sprawdzamy, czy element kursu istnieje
     const courseElement = await prisma.courseElements.findUnique({
-      where: { id: BigInt(elementId) },
+      where: { id: BigInt(elementId!) },
     });
 
     if (!courseElement) {
@@ -490,7 +548,8 @@ export const uploadImageForCourseElement = async (req: Request, res: Response) =
     const { filename, originalname, mimetype, size, path: filePath } = req.file;
 
     // Pobieranie ID użytkownika z sesji/tokenu
-    const userId = req.userId;
+    const user = req.user as { id: string | number | bigint };
+    const userId = user.id;
 
     // Folder uploads znajduje się w głównym katalogu projektu
     const uploadDir = path.join(__dirname, '../../uploads');
@@ -515,7 +574,7 @@ export const uploadImageForCourseElement = async (req: Request, res: Response) =
     const imageUrl = `${req.protocol}://${req.get('host')}${apiPath}`;
 
     await prisma.courseElements.update({
-      where: { id: BigInt(elementId) },
+      where: { id: BigInt(elementId!) },
       data: {
         content: imageUrl,
         additionalData: {
@@ -576,5 +635,26 @@ const getCourseStudentCount = async (courseId: string) => {
   } catch (error) {
     console.error('Error fetching course student count:', error);
     throw new Error('Internal server error');
+  }
+};
+
+export const getAllCategories = async (req: Request, res: Response) => {
+  try {
+    console.info('Fetching all categories...');
+    const categories = await prisma.categories.findMany();
+    // Serializacja BigInt na string
+    const serializableCategories = categories.map((cat) =>
+      Object.entries(cat).reduce(
+        (obj: Record<string, unknown>, [key, value]) => {
+          obj[key] = typeof value === 'bigint' ? value.toString() : value;
+          return obj;
+        },
+        {} as Record<string, unknown>,
+      ),
+    );
+    res.status(200).json(serializableCategories);
+  } catch (error) {
+    console.error('Error fetching all categories:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

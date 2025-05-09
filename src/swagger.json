@@ -776,6 +776,38 @@
           }
         }
       }
+    },
+    "/courses/categories": {
+      "get": {
+        "tags": ["courses"],
+        "summary": "Get all categories",
+        "description": "Retrieve a list of all available course categories.",
+        "responses": {
+          "200": {
+            "description": "List of categories",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "name": { "type": "string", "example": "Programowanie" },
+                  "description": { "type": "string", "example": "Kursy związane z programowaniem" }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Internal server error" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {

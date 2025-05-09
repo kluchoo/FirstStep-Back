@@ -1,10 +1,11 @@
-import { PrismaClient, Role } from '@prisma/client';
-import type { NextFunction, Request, Response } from 'express';
+import type { RequestWithUser } from '@/types/requestWithUser';
+import { Role } from '@prisma/client';
+import type { NextFunction, Response } from 'express';
 import { ReasonPhrases, StatusCodes } from 'http-status-codes';
 
-export const isAdminRole = (req: Request, res: Response, next: NextFunction) => {
+export const isAdminRole = (req: RequestWithUser, res: Response, next: NextFunction) => {
   const user = req.user as { role: string };
-  const allowedRoles = [Role.ADMIN]; // Assuming Role is an enum or object with role values
+  const allowedRoles = [Role.ADMIN as string]; // Ensure allowedRoles is string[]
   console.info('User role:', user.role);
   if (!user) {
     console.error('User not found in request object.');
