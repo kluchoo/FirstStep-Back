@@ -89,6 +89,7 @@ export const getUserCourses = async (req: Request, res: Response) => {
   }
 };
 
+// ...existing code...
 export const createCourse = async (req: RequestWithUser, res: Response) => {
   const { title, description, difficultyLevel, status } = req.body;
   try {
@@ -105,12 +106,21 @@ export const createCourse = async (req: RequestWithUser, res: Response) => {
         },
       },
     });
-    res.status(201).json(newCourse);
+    // Serializacja BigInt na string
+    const serializableCourse = Object.entries(newCourse).reduce(
+      (obj: Record<string, unknown>, [key, value]) => {
+        obj[key] = typeof value === 'bigint' ? value.toString() : value;
+        return obj;
+      },
+      {} as Record<string, unknown>,
+    );
+    res.status(201).json(serializableCourse);
   } catch (error) {
     console.error('Error creating course:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+// ...existing code...
 
 export const getCourseById = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -194,6 +204,9 @@ export const deleteCourse = async (req: Request, res: Response) => {
     // Delete related records (e.g., tests or course elements) before deleting the course
     await prisma.answers.deleteMany({
       where: { question: { test: { courseId: Number(id) } } },
+    });
+    await prisma.elementsStyle.deleteMany({
+      where: { courseElement: { courseId: Number(id) } },
     });
     await prisma.testQuestions.deleteMany({
       where: { test: { courseId: Number(id) } },

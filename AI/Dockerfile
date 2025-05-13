@@ -13,10 +13,9 @@ COPY stepus.yaml /AI/stepus.yaml
 RUN sed -i "s/{{MODEL_NAME}}/${MODEL_NAME}/g" /AI/stepus.yaml
 
 # Start the ollama service in the background and pull the model
-RUN ollama serve & \
-    sleep 5 && \
-    ollama pull ${MODEL_NAME} && \ 
-    ollama create stepus -f ./stepus.yaml
+RUN ollama serve
+RUN ollama pull ${MODEL_NAME}  
+RUN ollama create stepus -f ./stepus.yaml
 
 # Expose the Ollama API port (default is 11434)
 EXPOSE 11434

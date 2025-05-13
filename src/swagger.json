@@ -23,6 +23,10 @@
     {
       "name": "Files",
       "description": "File operations"
+    },
+    {
+      "name": "tests",
+      "description": "Test operations"
     }
   ],
   "securityDefinitions": {
@@ -794,6 +798,136 @@
                   "name": { "type": "string", "example": "Programowanie" },
                   "description": { "type": "string", "example": "Kursy związane z programowaniem" }
                 }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Internal server error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tests": {
+      "get": {
+        "tags": ["tests"],
+        "summary": "Get all tests",
+        "description": "Retrieve a list of all available tests",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of all tests",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "creatorId": { "type": "integer", "example": 1 },
+                  "courseId": { "type": "integer", "example": 1 },
+                  "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                  "duration": { "type": "integer", "example": 60 },
+                  "creationDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-01-01T00:00:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Unauthorized access" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "No tests found" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Internal server error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tests/{id}": {
+      "get": {
+        "tags": ["tests"],
+        "summary": "Get test by ID",
+        "description": "Retrieve a specific test by its ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test details",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer", "example": 1 },
+                "creatorId": { "type": "integer", "example": 1 },
+                "courseId": { "type": "integer", "example": 1 },
+                "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                "duration": { "type": "integer", "example": 60 },
+                "creationDate": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2023-01-01T00:00:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Unauthorized access" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Test not found" }
               }
             }
           },

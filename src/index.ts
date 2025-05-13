@@ -13,6 +13,7 @@ import aiRouters from './routers/aiRouters';
 import authRoutes from './routers/authRoutes';
 import coursesRouters from './routers/coursesRouters.js';
 import fileRoutes from './routers/fileRoutes.js';
+import testRouters from './routers/testRouters';
 
 // Generowanie Swaggera
 // generateSwagger();
@@ -68,6 +69,9 @@ app.use('/courses', coursesRouters);
 
 // pliki
 app.use('/files', fileRoutes);
+
+// testy
+app.use('/tests', testRouters);
 
 // filepath: /home/dominik/firststep-back/src/index.ts
 if (!process.env.PORT) {
