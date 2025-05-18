@@ -24,7 +24,7 @@ async function cleanDatabase() {
   console.log('Czyszczenie bazy danych...');
 
   // Usuwanie danych w odpowiedniej kolejności ze względu na zależności
-  await prisma.answers.deleteMany();
+  await prisma.testAnswers.deleteMany();
   await prisma.testQuestions.deleteMany();
   await prisma.testResults.deleteMany();
   await prisma.tests.deleteMany();
@@ -256,7 +256,7 @@ async function seedTest(creatorId: bigint, courseId: bigint, title: string, ques
         isCorrect = j === 0;
       }
 
-      await prisma.answers.create({
+      await prisma.testAnswers.create({
         data: {
           questionId: question.id,
           content:

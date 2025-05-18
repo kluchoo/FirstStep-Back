@@ -873,6 +873,135 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": ["tests"],
+        "summary": "Create a new test (raw query)",
+        "description": "Tworzy nowy test w bazie danych za pomocą zapytania SQL (raw query)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "creatorId": { "type": "integer", "example": 1 },
+                "courseId": { "type": "integer", "example": 1 },
+                "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                "duration": { "type": "integer", "example": 60 }
+              },
+              "required": ["creatorId", "courseId", "title", "duration"]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Test created successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer", "example": 1 },
+                "creatorId": { "type": "integer", "example": 1 },
+                "courseId": { "type": "integer", "example": 1 },
+                "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                "duration": { "type": "integer", "example": 60 },
+                "creationDate": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2023-01-01T00:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Missing required fields" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Internal server error" }
+              }
+            }
+          }
+        }
+      },
+      "/{id}": {
+        "get": {
+          "tags": ["tests"],
+          "summary": "Get test by ID",
+          "description": "Retrieve a specific test by its ID",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "type": "integer",
+              "description": "Test ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Test details",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "creatorId": { "type": "integer", "example": 1 },
+                  "courseId": { "type": "integer", "example": 1 },
+                  "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                  "duration": { "type": "integer", "example": 60 },
+                  "creationDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-01-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "error": { "type": "string", "example": "Unauthorized access" }
+                }
+              }
+            },
+            "404": {
+              "description": "Not Found",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": { "type": "string", "example": "Test not found" }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal Server Error",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "error": { "type": "string", "example": "Internal server error" }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/tests/{id}": {
@@ -940,6 +1069,177 @@
               }
             }
           }
+        }
+      }
+    },
+    "/tests/{id}/questions": {
+      "get": {
+        "tags": ["tests"],
+        "summary": "Get all questions for a test",
+        "description": "Retrieve all questions for a specific test by its ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of questions for the test",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "testId": { "type": "integer", "example": 1 },
+                  "content": { "type": "string", "example": "Jakie jest 2+2?" },
+                  "questionType": { "type": "string", "example": "SINGLE_CHOICE" },
+                  "points": { "type": "integer", "example": 1 },
+                  "order": { "type": "integer", "example": 1 }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No questions found for this test"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": ["tests"],
+        "summary": "Update questions for a test",
+        "description": "Update, add, or remove questions for a specific test. Questions not present in the request will be deleted.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer", "example": 1 },
+                      "content": { "type": "string", "example": "Jakie jest 2+2?" },
+                      "questionType": { "type": "string", "example": "SINGLE_CHOICE" },
+                      "points": { "type": "integer", "example": 1 },
+                      "order": { "type": "integer", "example": 1 }
+                    }
+                  }
+                }
+              },
+              "required": ["questions"]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Questions updated successfully" },
+          "400": { "description": "Questions must be an array" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/tests/{id}/answers": {
+      "get": {
+        "tags": ["tests"],
+        "summary": "Get all answers for a test",
+        "description": "Retrieve all answers for all questions in a specific test by its ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of answers for the test",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "questionId": { "type": "integer", "example": 1 },
+                  "content": { "type": "string", "example": "4" },
+                  "isCorrect": { "type": "boolean", "example": true },
+                  "order": { "type": "integer", "example": 1 }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No answers found for this test"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": ["tests"],
+        "summary": "Update answers for a test",
+        "description": "Update, add, or remove answers for all questions in a specific test. Answers not present in the request will be deleted.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "answers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer", "example": 1 },
+                      "questionId": { "type": "integer", "example": 1 },
+                      "content": { "type": "string", "example": "4" },
+                      "isCorrect": { "type": "boolean", "example": true },
+                      "order": { "type": "integer", "example": 1 }
+                    }
+                  }
+                }
+              },
+              "required": ["answers"]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Answers updated successfully" },
+          "400": { "description": "Answers must be an array" },
+          "500": { "description": "Internal server error" }
         }
       }
     }

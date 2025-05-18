@@ -202,7 +202,7 @@ export const deleteCourse = async (req: Request, res: Response) => {
   try {
     console.info(`Deleting course with ID: ${id}`);
     // Delete related records (e.g., tests or course elements) before deleting the course
-    await prisma.answers.deleteMany({
+    await prisma.testAnswers.deleteMany({
       where: { question: { test: { courseId: Number(id) } } },
     });
     await prisma.elementsStyle.deleteMany({

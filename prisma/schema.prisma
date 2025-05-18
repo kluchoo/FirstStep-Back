@@ -70,7 +70,7 @@ model Tests {
   creatorId    BigInt
   courseId     BigInt          @unique
   title        String          @db.VarChar(255)
-  duration     Int // in minutes
+  duration     Int
   creationDate DateTime        @default(now()) @db.Timestamp
   creator      Users           @relation(fields: [creatorId], references: [id])
   course       Courses         @relation("CoursesToTests", fields: [courseId], references: [id])
@@ -86,7 +86,7 @@ model TestQuestions {
   points       Int          @default(1)
   order        Int
   test         Tests        @relation(fields: [testId], references: [id])
-  answers      Answers[]
+  answers      TestAnswers[]
 }
 
 enum QuestionType {
@@ -95,7 +95,7 @@ enum QuestionType {
   TRUE_FALSE
 }
 
-model Answers {
+model TestAnswers {
   id         BigInt        @id @default(autoincrement())
   questionId BigInt
   content    String        @db.Text
@@ -103,7 +103,6 @@ model Answers {
   order      Int
   question   TestQuestions @relation(fields: [questionId], references: [id])
 }
-
 model CourseElementOrder {
   courseId  BigInt  @id
   lastOrder Int     @default(1)

@@ -43,18 +43,18 @@ services:
 
       UPLOAD_DIR: ${UPLOAD_DIR}
 
-  stepus:
-    build:
-      context: ./AI
-      dockerfile: Dockerfile
-    container_name: stepus
-    ports:
-      - '8080:11434'
-    networks:
-      - FirstStep
-    restart: unless-stopped
-    volumes:
-      - stepus_data:/root/.ollama
+  # stepus:
+  #   build:
+  #     context: ./AI
+  #     dockerfile: Dockerfile
+  #   container_name: stepus
+  #   ports:
+  #     - '8080:11434'
+  #   networks:
+  #     - FirstStep
+  #   restart: unless-stopped
+  #   volumes:
+  #     - stepus_data:/root/.ollama
 
 networks:
   FirstStep:
