@@ -30,7 +30,7 @@ export const askAi = async (req: Request, res: Response) => {
     }
 
     // Wyślij prompt do Ollamy
-    const response = await axios.post('http://localhost:8080/api/generate', {
+    const response = await axios.post('http://stepus:11434/api/generate', {
       model: 'stepus',
       messages,
     });

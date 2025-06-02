@@ -21,7 +21,7 @@ import { upload } from '../controllers/fileController.js';
 const router: Router = Router();
 router.use(authenticateToken, isAnyRoles); // Apply isAnyRoles and isAdminRole middleware to all routes
 
-router.get('/', isTeacherRole, getAllCourses);
+router.get('/', getAllCourses);
 router.get('/id/:id', getCourseById);
 router.get('/categories', getAllCategories);
 router.get('/:nickname', getUserCourses);

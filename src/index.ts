@@ -66,7 +66,7 @@ app.use('/ai', aiRouters);
 
 // kursy
 app.use('/courses', coursesRouters);
-
+// app.use('/courses', limiter, coursesRouters);
 // pliki
 app.use('/files', fileRoutes);
 

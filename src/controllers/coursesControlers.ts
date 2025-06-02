@@ -1,28 +1,43 @@
 import type { RequestWithUser } from '@/types/requestWithUser';
-import { Difficulty, PrismaClient } from '@prisma/client';
 import type { Request, Response } from 'express';
 import path from 'path';
+import { Pool } from 'pg';
 
-const prisma = new PrismaClient();
+// Konfiguracja połączenia z PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL?.replace(/^"|"$/g, ''),
+});
 
 export const getAllCourses = async (req: Request, res: Response) => {
   try {
     console.info('Fetching all courses...');
-    const courses = await prisma.courses.findMany();
+    const result = await pool.query(`SELECT * FROM "Courses"`);
+    const courses = result.rows;
 
-    // Konwersja wartości BigInt na stringi
-    const serializableCourses = courses.map((course) => {
-      // Tworzenie nowego obiektu z przekształconymi wartościami BigInt
-      return Object.entries(course).reduce(
-        (obj: Record<string, unknown>, [key, value]) => {
-          obj[key] = typeof value === 'bigint' ? value.toString() : value;
-          return obj;
-        },
-        {} as Record<string, unknown>,
-      );
+    // Serializacja już nie jest potrzebna, ponieważ pg konwertuje BigInt na string
+
+    // Pobierz liczbę studentów dla każdego kursu
+    const coursesWithStudentCount = await Promise.all(
+      courses.map(async (course) => {
+        const studentCount = await getCourseStudentCount(course.id);
+        return { ...course, studentCount };
+      }),
+    );
+
+    // Pobierz kategorie dla każdego kursu
+    const coursesWithCategories = await Promise.all(
+      courses.map(async (course) => {
+        const categories = await getCourseCategories(course.id);
+        return { ...course, categories };
+      }),
+    );
+
+    const coursesWithStudentCountAndCategories = coursesWithStudentCount.map((course) => {
+      const courseWithCategories = coursesWithCategories.find((c) => c.id === course.id);
+      return { ...course, categories: courseWithCategories?.categories || [] };
     });
 
-    res.status(200).json(serializableCourses);
+    res.status(200).json(coursesWithStudentCountAndCategories);
   } catch (error) {
     console.error('Error fetching courses:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -32,53 +47,33 @@ export const getAllCourses = async (req: Request, res: Response) => {
 export const getUserCourses = async (req: Request, res: Response) => {
   const { nickname } = req.params;
   try {
-    console.info(`Fetching courses for user with ID: ${nickname}`);
-    const courses = await prisma.courses.findMany({
-      where: {
-        creator: {
-          nickname: nickname,
-        },
-      },
-    });
+    console.info(`Fetching courses for user with nickname: ${nickname}`);
+    const result = await pool.query(
+      `
+      SELECT c.* FROM "Courses" c
+      INNER JOIN "Users" u ON c."creatorId" = u.id
+      WHERE u.nickname = $1
+    `,
+      [nickname],
+    );
+    const courses = result.rows;
 
-    const serializableCourses = courses.map((course) => {
-      return Object.entries(course).reduce(
-        (obj: Record<string, unknown>, [key, value]) => {
-          obj[key] = typeof value === 'bigint' ? value.toString() : value;
-          return obj;
-        },
-        {} as Record<string, unknown>,
-      );
-    });
-
-    // Fetch student count for each course
     const coursesWithStudentCount = await Promise.all(
-      serializableCourses.map(async (course: any) => {
+      courses.map(async (course) => {
         const studentCount = await getCourseStudentCount(course.id);
         return { ...course, studentCount };
       }),
     );
 
-    // Fetch categories for each course
     const coursesWithCategories = await Promise.all(
-      serializableCourses.map(async (course: any) => {
+      courses.map(async (course) => {
         const categories = await getCourseCategories(course.id);
-        // Serializacja BigInt w kategoriach
-        const serializableCategories = categories.map((cat) => {
-          return Object.entries(cat).reduce(
-            (obj: Record<string, unknown>, [key, value]) => {
-              obj[key] = typeof value === 'bigint' ? value.toString() : value;
-              return obj;
-            },
-            {} as Record<string, unknown>,
-          );
-        });
-        return { ...course, categories: serializableCategories };
+        return { ...course, categories };
       }),
     );
 
-    const coursesWithStudentCountAndCategories = coursesWithStudentCount.map((course: any) => {
-      const courseWithCategories = coursesWithCategories.find((c: any) => c.id === course.id);
+    const coursesWithStudentCountAndCategories = coursesWithStudentCount.map((course) => {
+      const courseWithCategories = coursesWithCategories.find((c) => c.id === course.id);
       return { ...course, categories: courseWithCategories?.categories || [] };
     });
 
@@ -89,57 +84,47 @@ export const getUserCourses = async (req: Request, res: Response) => {
   }
 };
 
-// ...existing code...
 export const createCourse = async (req: RequestWithUser, res: Response) => {
   const { title, description, difficultyLevel, status } = req.body;
   try {
     console.info('Creating a new course...');
     const user = req.user as { id: string | number | bigint };
-    const newCourse = await prisma.courses.create({
-      data: {
-        title,
-        description,
-        difficultyLevel,
-        status,
-        creator: {
-          connect: { id: BigInt(user.id) },
-        },
-      },
-    });
-    // Serializacja BigInt na string
-    const serializableCourse = Object.entries(newCourse).reduce(
-      (obj: Record<string, unknown>, [key, value]) => {
-        obj[key] = typeof value === 'bigint' ? value.toString() : value;
-        return obj;
-      },
-      {} as Record<string, unknown>,
+
+    const result = await pool.query(
+      `
+      INSERT INTO "Courses" (title, description, "difficultyLevel", status, "creatorId") 
+      VALUES ($1, $2, $3, $4, $5) 
+      RETURNING *
+    `,
+      [title, description, difficultyLevel, status, user.id.toString()],
     );
-    res.status(201).json(serializableCourse);
+
+    const newCourse = result.rows[0];
+
+    res.status(201).json(newCourse);
   } catch (error) {
     console.error('Error creating course:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-// ...existing code...
 
 export const getCourseById = async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     console.info(`Fetching course with ID: ${id}`);
-    const course = await prisma.courses.findUnique({
-      where: { id: Number(id) },
-    });
-    if (!course) {
+    const result = await pool.query(
+      `
+      SELECT * FROM "Courses" WHERE id = $1
+    `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Course not found' });
     }
-    const serializableCourse = Object.entries(course).reduce(
-      (obj: Record<string, unknown>, [key, value]) => {
-        obj[key] = typeof value === 'bigint' ? value.toString() : value;
-        return obj;
-      },
-      {} as Record<string, unknown>,
-    );
-    res.status(200).json(serializableCourse);
+
+    const course = result.rows[0];
+    res.status(200).json(course);
   } catch (error) {
     console.error('Error fetching course by ID:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -149,146 +134,128 @@ export const getCourseById = async (req: Request, res: Response) => {
 export const updateCourse = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { title, description, difficultyLevel, status, categories } = req.body;
+
+  const client = await pool.connect();
   try {
     console.info(`Updating course with ID: ${id}`);
-    // Walidacja difficultyLevel
-    if (difficultyLevel && !Object.values(Difficulty).includes(difficultyLevel)) {
-      return res.status(400).json({
-        error: `Nieprawidłowa wartość difficultyLevel. Dozwolone: ${Object.values(Difficulty).join(', ')}`,
-      });
-    }
-    // Przygotuj dane do aktualizacji
-    const updateData: any = { title, description, difficultyLevel, status };
-    // Jeśli przesłano kategorie, zaktualizuj relację
-    if (Array.isArray(categories)) {
-      updateData.categories = {
-        set: categories.map((cat: any) => ({ id: BigInt(cat.id) })),
-      };
-    }
-    const updatedCourse = await prisma.courses.update({
-      where: { id: Number(id) },
-      data: updateData,
-      include: { categories: true },
-    });
-    // Serializacja BigInt na string
-    const serializableCourse = Object.entries(updatedCourse).reduce(
-      (obj: Record<string, unknown>, [key, value]) => {
-        if (key === 'categories' && Array.isArray(value)) {
-          obj[key] = value.map((cat) =>
-            Object.entries(cat).reduce(
-              (catObj: Record<string, unknown>, [catKey, catValue]) => {
-                catObj[catKey] = typeof catValue === 'bigint' ? catValue.toString() : catValue;
-                return catObj;
-              },
-              {} as Record<string, unknown>,
-            ),
-          );
-        } else {
-          obj[key] = typeof value === 'bigint' ? value.toString() : value;
-        }
-        return obj;
-      },
-      {} as Record<string, unknown>,
+
+    await client.query('BEGIN');
+
+    // Aktualizacja głównych danych kursu
+    const result = await client.query(
+      `
+      UPDATE "Courses" 
+      SET title = $1, description = $2, "difficultyLevel" = $3, status = $4 
+      WHERE id = $5 
+      RETURNING *
+    `,
+      [title, description, difficultyLevel, status, id],
     );
-    res.status(200).json(serializableCourse);
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    const updatedCourse = result.rows[0];
+
+    // Aktualizacja kategorii jeśli zostały podane
+    if (Array.isArray(categories)) {
+      // Najpierw usuń wszystkie obecne powiązania
+      await client.query(
+        `
+        DELETE FROM "_CourseCategories" 
+        WHERE "B" = $1
+      `,
+        [id],
+      );
+
+      // Następnie dodaj nowe powiązania
+      for (const category of categories) {
+        await client.query(
+          `
+          INSERT INTO "_CourseCategories" ("A", "B") 
+          VALUES ($1, $2)
+        `,
+          [category.id, id],
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Pobierz aktualizowany kurs z kategoriami
+    if (id === undefined) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Course ID is required.' });
+    }
+    const courseCategories = await getCourseCategories(id);
+    res.status(200).json({ ...updatedCourse, categories: courseCategories });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error updating course:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 };
 
 export const deleteCourse = async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
-    console.info(`Deleting course with ID: ${id}`);
-    // Delete related records (e.g., tests or course elements) before deleting the course
-    await prisma.testAnswers.deleteMany({
-      where: { question: { test: { courseId: Number(id) } } },
-    });
-    await prisma.elementsStyle.deleteMany({
-      where: { courseElement: { courseId: Number(id) } },
-    });
-    await prisma.testQuestions.deleteMany({
-      where: { test: { courseId: Number(id) } },
-    });
-    await prisma.testResults.deleteMany({
-      where: { test: { courseId: Number(id) } },
-    });
-    await prisma.tests.deleteMany({
-      where: { courseId: Number(id) },
-    });
-    await prisma.courseElements.deleteMany({
-      where: { courseId: Number(id) },
-    });
-    await prisma.enrollments.deleteMany({
-      where: { courseId: Number(id) },
-    });
-    await prisma.courseElementOrder.deleteMany({
-      where: { courseId: Number(id) },
-    });
-    await prisma.courses.delete({
-      where: { id: Number(id) },
-    });
-    res.status(200).json({ message: 'Course deleted successfully' });
+    console.info(`Deleting course with ID: ${id} using procedure`);
+
+    // Użycie procedury do kaskadowego usuwania kursu
+    await pool.query(`CALL obscure_cleanup_proc($1)`, [id]);
+
+    res.status(200).json({ message: 'Course deleted successfully (via procedure)' });
   } catch (error) {
     console.error('Error deleting course:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-//edycja/pobieranie elementów kursu
 export const getCourseElements = async (req: Request, res: Response) => {
   const { courseId } = req.params;
   try {
     console.info(`Fetching elements for course with ID: ${courseId}`);
-    const courseElements = await prisma.courseElements.findMany({
-      where: {
-        courseId: Number(courseId),
-      },
-    });
-    const courseElementsIds = courseElements.map((element) => element.id);
-    // Fetch all styles for elements
-    const styles = await prisma.elementsStyle.findMany({
-      where: {
-        courseElementId: {
-          in: courseElementsIds,
-        },
-      },
-    });
 
-    // Map styles to their respective course elements
+    // Pobierz elementy kursu
+    const elementsResult = await pool.query(
+      `
+      SELECT * FROM "CourseElements" 
+      WHERE "courseId" = $1
+      ORDER BY "order"
+    `,
+      [courseId],
+    );
+
+    const courseElements = elementsResult.rows;
+
+    // Jeśli nie ma elementów, zwróć pustą tablicę
+    if (courseElements.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    // Pobierz style dla tych elementów
+    const elementIds = courseElements.map((el) => el.id);
+    const stylesResult = await pool.query(
+      `
+      SELECT * FROM "ElementsStyle" 
+      WHERE "courseElementId" = ANY($1::bigint[])
+    `,
+      [elementIds],
+    );
+
+    const styles = stylesResult.rows;
+
+    // Mapuj style do odpowiednich elementów
     const courseElementsWithStyles = courseElements.map((element) => {
       const elementStyles = styles.filter((style) => style.courseElementId === element.id);
       return { ...element, styles: elementStyles };
     });
 
-    const serializableCourseElements = courseElementsWithStyles.map((element) => {
-      // Serializuj BigInt również w tablicy stylów
-      const serializableStyles = (element.styles || []).map((style: any) => {
-        return Object.entries(style).reduce(
-          (obj: Record<string, unknown>, [key, value]) => {
-            obj[key] = typeof value === 'bigint' ? value.toString() : value;
-            return obj;
-          },
-          {} as Record<string, unknown>,
-        );
-      });
-      // Serializuj BigInt w głównym obiekcie elementu
-      const serializableElement = Object.entries(element).reduce(
-        (obj: Record<string, unknown>, [key, value]) => {
-          if (key === 'styles') {
-            obj[key] = serializableStyles;
-          } else {
-            obj[key] = typeof value === 'bigint' ? value.toString() : value;
-          }
-          return obj;
-        },
-        {} as Record<string, unknown>,
-      );
-      return serializableElement;
-    });
-
-    res.status(200).json(serializableCourseElements);
+    res.status(200).json(courseElementsWithStyles);
   } catch (error) {
     console.error('Error fetching course elements:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -300,15 +267,18 @@ export const createNextCourseElements = async (req: Request, res: Response) => {
   const { type, content, order } = req.body;
   try {
     console.info('Creating a new course element...');
-    const newCourseElement = await prisma.courseElements.create({
-      data: {
-        courseId: Number(courseId),
-        type,
-        content,
-        order: order ?? 0,
-      },
-    });
-    res.status(201).json(newCourseElement);
+
+    const result = await pool.query(
+      `
+      INSERT INTO "CourseElements" ("courseId", type, content, "order") 
+      VALUES ($1, $2, $3, $4) 
+      RETURNING *
+    `,
+      [courseId, type, content, order || 0],
+    );
+
+    const newElement = result.rows[0];
+    res.status(201).json(newElement);
   } catch (error) {
     console.error('Error creating course element:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -320,11 +290,23 @@ export const updateCourseElement = async (req: Request, res: Response) => {
   const { type, content } = req.body;
   try {
     console.info(`Updating course element with ID: ${elementId}`);
-    const updatedCourseElement = await prisma.courseElements.update({
-      where: { id: Number(elementId) },
-      data: { type, content },
-    });
-    res.status(200).json(updatedCourseElement);
+
+    const result = await pool.query(
+      `
+      UPDATE "CourseElements" 
+      SET type = $1, content = $2 
+      WHERE id = $3 
+      RETURNING *
+    `,
+      [type, content, elementId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Course element not found' });
+    }
+
+    const updatedElement = result.rows[0];
+    res.status(200).json(updatedElement);
   } catch (error) {
     console.error('Error updating course element:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -333,206 +315,205 @@ export const updateCourseElement = async (req: Request, res: Response) => {
 
 export const deleteCourseElement = async (req: Request, res: Response) => {
   const { elementId } = req.params;
+  const client = await pool.connect();
   try {
     console.info(`Deleting course element with ID: ${elementId}`);
-    await prisma.courseElements.delete({
-      where: { id: Number(elementId) },
-    });
 
+    await client.query('BEGIN');
+
+    // Najpierw usuń powiązane style
+    await client.query(
+      `
+      DELETE FROM "ElementsStyle" 
+      WHERE "courseElementId" = $1
+    `,
+      [elementId],
+    );
+
+    // Następnie usuń element
+    const result = await client.query(
+      `
+      DELETE FROM "CourseElements" 
+      WHERE id = $1 
+      RETURNING id
+    `,
+      [elementId],
+    );
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Course element not found' });
+    }
+
+    await client.query('COMMIT');
     res.status(200).json({ message: 'Course element deleted successfully' });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error deleting course element:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 };
 
 export const setCoursesElements = async (req: Request, res: Response) => {
   const { courseId } = req.params;
   const { elements: newElements } = req.body;
-  console.log('courseId:', req.params.courseId);
-  console.log('body:', req.body);
 
+  const client = await pool.connect();
   try {
     console.info(`Setting course elements for course ID: ${courseId}`);
 
-    // Pobierz istniejące elementy
-    const existingElements = await prisma.courseElements.findMany({
-      where: { courseId: Number(courseId) },
-    });
+    await client.query('BEGIN');
 
-    // Stwórz mapę istniejących elementów dla szybkiego wyszukiwania
-    const existingElementsMap = new Map(
-      existingElements.map((element) => [Number(element.id), element]),
+    // Pobierz istniejące elementy kursu
+    const existingResult = await client.query(
+      `
+      SELECT id FROM "CourseElements" 
+      WHERE "courseId" = $1
+    `,
+      [courseId],
     );
 
-    // Pobierz istniejące style dla elementów kursu
-    const existingStyles = await prisma.elementsStyle.findMany({
-      where: {
-        courseElementId: {
-          in: existingElements.map((element) => element.id),
-        },
-      },
-    });
+    const existingElementIds = existingResult.rows.map((row) => row.id);
 
-    // Stwórz mapę istniejących stylów dla szybkiego wyszukiwania
-    const existingStylesMap = new Map();
-    existingStyles.forEach((style) => {
-      existingStylesMap.set(Number(style.courseElementId), style);
-    });
+    // Identyfikuj elementy do usunięcia (te, które są w bazie, ale nie w żądaniu)
+    const newElementIds = newElements
+      .filter((e: { id?: string | number }) => e.id)
+      .map((e: { id?: string | number }) => e.id!.toString());
 
-    // Identyfikujemy elementy do usunięcia (te, które są w bazie, ale nie w żądaniu)
-    const elementIdsToKeep = (newElements as any[])
-      .map((element) => (element.id ? Number(element.id) : undefined))
-      .filter((id) => id !== undefined);
-
-    const elementsToDelete = existingElements.filter(
-      (element) => !elementIdsToKeep.includes(Number(element.id)),
+    const elementsToDelete = existingElementIds.filter(
+      (id) => !newElementIds.includes(id.toString()),
     );
 
-    // Usuwamy elementy nieobecne w żądaniu
+    // Usuń elementy nieobecne w żądaniu
     if (elementsToDelete.length > 0) {
-      // Najpierw usuwamy powiązane style dla elementów, które mają zostać usunięte
-      await prisma.elementsStyle.deleteMany({
-        where: {
-          courseElementId: {
-            in: elementsToDelete.map((element) => element.id),
-          },
-        },
-      });
-
-      // Następnie usuwamy elementy
-      await prisma.courseElements.deleteMany({
-        where: {
-          id: {
-            in: elementsToDelete.map((element) => element.id),
-          },
-        },
-      });
-      console.info(`Deleted ${elementsToDelete.length} removed elements`);
-    }
-
-    // Aktualizujemy lub tworzymy elementy z żądania
-    const processedElements = await Promise.all(
-      (newElements as any[]).map(async (element) => {
-        const elementId = element.id ? Number(element.id) : undefined;
-        let updatedOrCreatedElement;
-
-        if (elementId && existingElementsMap.has(elementId)) {
-          // Aktualizacja istniejącego elementu
-          console.info(`Updating element with ID: ${elementId}`);
-          updatedOrCreatedElement = await prisma.courseElements.update({
-            where: { id: elementId },
-            data: {
-              type: element.type,
-              content: element.content,
-              order: element.order,
-            },
-          });
-        } else {
-          // Tworzenie nowego elementu lub element z ID nie istnieje
-          console.info(`Creating new element${elementId ? ` (ID ${elementId} not found)` : ''}`);
-          updatedOrCreatedElement = await prisma.courseElements.create({
-            data: {
-              courseId: Number(courseId),
-              type: element.type,
-              content: element.content,
-              order: element.order || 0,
-            },
-          });
-        }
-
-        // Teraz obsługujemy style dla tego elementu
-        if (element.styles && element.styles.length > 0) {
-          const style = element.styles[0];
-
-          // Sprawdzamy, czy styl istnieje dla tego elementu
-          if (existingStylesMap.has(Number(updatedOrCreatedElement.id))) {
-            // Aktualizacja istniejącego stylu
-            console.info(`Updating style for element ID: ${updatedOrCreatedElement.id}`);
-            await prisma.elementsStyle.update({
-              where: { id: existingStylesMap.get(Number(updatedOrCreatedElement.id)).id },
-              data: {
-                isBold: style.isBold,
-                isItalic: style.isItalic,
-                isUnderline: style.isUnderline,
-                hasHighlight: style.hasHighlight,
-                color: style.color,
-                fontSize: style.fontSize,
-              },
-            });
-          } else {
-            // Tworzenie nowego stylu
-            console.info(`Creating new style for element ID: ${updatedOrCreatedElement.id}`);
-            await prisma.elementsStyle.create({
-              data: {
-                courseElementId: updatedOrCreatedElement.id,
-                isBold: style.isBold || false,
-                isItalic: style.isItalic || false,
-                isUnderline: style.isUnderline || false,
-                hasHighlight: style.hasHighlight || false,
-                color: style.color || null,
-                fontSize: style.fontSize || null,
-              },
-            });
-          }
-        }
-
-        return updatedOrCreatedElement;
-      }),
-    );
-
-    // Pobierz aktualizowane elementy wraz z ich stylami
-    const updatedElements = await prisma.courseElements.findMany({
-      where: {
-        id: {
-          in: processedElements.map((element) => element.id),
-        },
-      },
-      include: {
-        elementsStyles: true,
-      },
-    });
-
-    // Konwersja wartości BigInt na stringi przed wysłaniem odpowiedzi
-    const serializableProcessedElements = updatedElements.map((element) => {
-      // Konwertuj style
-      const serializableStyles = element.elementsStyles.map((style) => {
-        return Object.entries(style).reduce(
-          (obj: Record<string, unknown>, [key, value]) => {
-            obj[key] = typeof value === 'bigint' ? value.toString() : value;
-            return obj;
-          },
-          {} as Record<string, unknown>,
-        );
-      });
-
-      // Konwertuj element główny
-      const serializableElement = Object.entries(element).reduce(
-        (obj: Record<string, unknown>, [key, value]) => {
-          if (key === 'elementsStyles') {
-            obj['styles'] = serializableStyles;
-          } else {
-            obj[key] = typeof value === 'bigint' ? value.toString() : value;
-          }
-          return obj;
-        },
-        {} as Record<string, unknown>,
+      // Usuń powiązane style
+      await client.query(
+        `
+        DELETE FROM "ElementsStyle" 
+        WHERE "courseElementId" = ANY($1::bigint[])
+      `,
+        [elementsToDelete],
       );
 
-      return serializableElement;
-    });
+      // Usuń elementy
+      await client.query(
+        `
+        DELETE FROM "CourseElements" 
+        WHERE id = ANY($1::bigint[])
+      `,
+        [elementsToDelete],
+      );
+    }
 
-    res.status(200).json(serializableProcessedElements);
+    // Aktualizuj lub dodaj nowe elementy
+    const processedElements = [];
+    for (const element of newElements) {
+      let result;
+
+      if (element.id && existingElementIds.includes(Number(element.id))) {
+        // Aktualizacja istniejącego elementu
+        result = await client.query(
+          `
+          UPDATE "CourseElements" 
+          SET type = $1, content = $2, "order" = $3 
+          WHERE id = $4 
+          RETURNING *
+        `,
+          [element.type, element.content, element.order || 0, element.id],
+        );
+      } else {
+        // Dodanie nowego elementu
+        result = await client.query(
+          `
+          INSERT INTO "CourseElements" ("courseId", type, content, "order") 
+          VALUES ($1, $2, $3, $4) 
+          RETURNING *
+        `,
+          [courseId, element.type, element.content, element.order || 0],
+        );
+      }
+
+      const processedElement = result.rows[0];
+      processedElements.push(processedElement);
+
+      // Obsługa stylów dla tego elementu
+      if (element.styles && element.styles.length > 0) {
+        const style = element.styles[0];
+
+        // Sprawdź czy styl już istnieje dla tego elementu
+        const styleResult = await client.query(
+          `
+          SELECT id FROM "ElementsStyle" 
+          WHERE "courseElementId" = $1
+        `,
+          [processedElement.id],
+        );
+
+        if (styleResult.rows.length > 0) {
+          // Aktualizacja stylu
+          await client.query(
+            `
+            UPDATE "ElementsStyle" 
+            SET "isBold" = $1, "isItalic" = $2, "isUnderline" = $3, 
+                "hasHighlight" = $4, "color" = $5, "fontSize" = $6 
+            WHERE id = $7
+          `,
+            [
+              style.isBold || false,
+              style.isItalic || false,
+              style.isUnderline || false,
+              style.hasHighlight || false,
+              style.color || null,
+              style.fontSize || null,
+              styleResult.rows[0].id,
+            ],
+          );
+        } else {
+          // Utworzenie nowego stylu
+          await client.query(
+            `
+            INSERT INTO "ElementsStyle" 
+            ("courseElementId", "isBold", "isItalic", "isUnderline", "hasHighlight", "color", "fontSize") 
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `,
+            [
+              processedElement.id,
+              style.isBold || false,
+              style.isItalic || false,
+              style.isUnderline || false,
+              style.hasHighlight || false,
+              style.color || null,
+              style.fontSize || null,
+            ],
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Pobierz zaktualizowane elementy wraz ze stylami
+    if (!courseId) {
+      throw new Error('courseId is required');
+    }
+    const response = await getCourseElementsWithStyles(courseId);
+    res.status(200).json(response);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error setting course elements:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 };
 
-// Nowy kontroler do obsługi zdjęć w elementach kursu
 export const uploadImageForCourseElement = async (req: RequestWithUser, res: Response) => {
+  const { elementId } = req.params;
+  const client = await pool.connect();
+
   try {
-    const { elementId } = req.params;
     if (!elementId) {
       return res.status(400).json({ error: 'Brak ID elementu kursu.' });
     }
@@ -541,17 +522,26 @@ export const uploadImageForCourseElement = async (req: RequestWithUser, res: Res
       return res.status(400).json({ error: 'Brak pliku do przesłania.' });
     }
 
-    // Sprawdzamy, czy element kursu istnieje
-    const courseElement = await prisma.courseElements.findUnique({
-      where: { id: BigInt(elementId!) },
-    });
+    await client.query('BEGIN');
 
-    if (!courseElement) {
+    // Sprawdź czy element istnieje i czy jest typu IMAGE
+    const elementResult = await client.query(
+      `
+      SELECT * FROM "CourseElements" 
+      WHERE id = $1
+    `,
+      [elementId],
+    );
+
+    if (elementResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Element kursu nie został znaleziony.' });
     }
 
-    // Sprawdź, czy element jest typu IMAGE
-    if (courseElement.type !== 'IMAGE') {
+    const element = elementResult.rows[0];
+
+    if (element.type !== 'IMAGE') {
+      await client.query('ROLLBACK');
       return res
         .status(400)
         .json({ error: 'Tylko elementy typu IMAGE mogą mieć przypisane zdjęcia.' });
@@ -572,35 +562,40 @@ export const uploadImageForCourseElement = async (req: RequestWithUser, res: Res
     const apiPath = `/uploads/${relativePath}`;
 
     // Zapisanie metadanych pliku do bazy danych
-    const fileUpload = await prisma.fileUploads.create({
-      data: {
-        filename,
-        originalName: originalname,
-        path: apiPath,
-        mimeType: mimetype,
-        size,
-        userId: BigInt(userId),
-      },
-    });
+    const fileUploadResult = await client.query(
+      `
+      INSERT INTO "FileUploads" (filename, "originalName", path, "mimeType", size, "userId")
+      VALUES ($1, $2, $3, $4, $5, $6) 
+      RETURNING *
+    `,
+      [filename, originalname, apiPath, mimetype, size, userId],
+    );
+
+    const fileUpload = fileUploadResult.rows[0];
 
     // Aktualizujemy element kursu, aby zawierał URL do zdjęcia
     const imageUrl = `${req.protocol}://${req.get('host')}${apiPath}`;
 
-    await prisma.courseElements.update({
-      where: { id: BigInt(elementId!) },
-      data: {
-        content: imageUrl,
-        additionalData: {
-          fileId: fileUpload.id.toString(),
-          originalName: originalname,
-          mimeType: mimetype,
-        },
-      },
+    const additionalData = JSON.stringify({
+      fileId: fileUpload.id.toString(),
+      originalName: originalname,
+      mimeType: mimetype,
     });
+
+    await client.query(
+      `
+      UPDATE "CourseElements" 
+      SET content = $1, "additionalData" = $2::jsonb 
+      WHERE id = $3
+    `,
+      [imageUrl, additionalData, elementId],
+    );
+
+    await client.query('COMMIT');
 
     // Przygotowanie odpowiedzi z URL do pliku
     const responseData = {
-      id: fileUpload.id.toString(),
+      id: fileUpload.id,
       elementId,
       url: imageUrl,
       originalName: fileUpload.originalName,
@@ -610,62 +605,97 @@ export const uploadImageForCourseElement = async (req: RequestWithUser, res: Res
 
     return res.status(201).json(responseData);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error uploading image for course element:', error);
     return res
       .status(500)
       .json({ error: 'Wystąpił błąd podczas przesyłania zdjęcia dla elementu kursu.' });
+  } finally {
+    client.release();
   }
 };
 
-const getCourseCategories = async (courseId: string) => {
+// Funkcja pomocnicza do pobierania elementów kursu wraz ze stylami
+async function getCourseElementsWithStyles(courseId: string | number) {
+  // Pobierz elementy kursu
+  const elementsResult = await pool.query(
+    `
+    SELECT * FROM "CourseElements" 
+    WHERE "courseId" = $1
+    ORDER BY "order"
+  `,
+    [courseId],
+  );
+
+  const courseElements = elementsResult.rows;
+
+  // Jeśli nie ma elementów, zwróć pustą tablicę
+  if (courseElements.length === 0) {
+    return [];
+  }
+
+  // Pobierz style dla tych elementów
+  const elementIds = courseElements.map((el) => el.id);
+  const stylesResult = await pool.query(
+    `
+    SELECT * FROM "ElementsStyle" 
+    WHERE "courseElementId" = ANY($1::bigint[])
+  `,
+    [elementIds],
+  );
+
+  const styles = stylesResult.rows;
+
+  // Mapuj style do odpowiednich elementów
+  return courseElements.map((element) => {
+    const elementStyles = styles.filter((style) => style.courseElementId === element.id);
+    return { ...element, styles: elementStyles };
+  });
+}
+
+const getCourseCategories = async (courseId: string | number) => {
   try {
     console.info('Fetching course categories...');
-    const categories = await prisma.categories.findMany({
-      where: {
-        courses: {
-          some: {
-            id: Number(courseId),
-          },
-        },
-      },
-    });
-    return categories;
+    const result = await pool.query(
+      `
+      SELECT c.* FROM "Categories" c
+      JOIN "_CourseCategories" cc ON cc."A" = c.id
+      WHERE cc."B" = $1
+    `,
+      [courseId],
+    );
+
+    return result.rows;
   } catch (error) {
     console.error('Error fetching course categories:', error);
-    throw new Error('Internal server error');
+    return [];
   }
 };
 
-const getCourseStudentCount = async (courseId: string) => {
+const getCourseStudentCount = async (courseId: string | number) => {
   try {
     console.info('Fetching course student count...');
-    const count = await prisma.enrollments.count({
-      where: {
-        courseId: Number(courseId),
-      },
-    });
-    return count;
+    const result = await pool.query(
+      `
+      SELECT COUNT(*)::int as count 
+      FROM "Enrollments" 
+      WHERE "courseId" = $1
+    `,
+      [courseId],
+    );
+
+    return result.rows[0]?.count || 0;
   } catch (error) {
     console.error('Error fetching course student count:', error);
-    throw new Error('Internal server error');
+    return 0;
   }
 };
 
 export const getAllCategories = async (req: Request, res: Response) => {
   try {
     console.info('Fetching all categories...');
-    const categories = await prisma.categories.findMany();
-    // Serializacja BigInt na string
-    const serializableCategories = categories.map((cat) =>
-      Object.entries(cat).reduce(
-        (obj: Record<string, unknown>, [key, value]) => {
-          obj[key] = typeof value === 'bigint' ? value.toString() : value;
-          return obj;
-        },
-        {} as Record<string, unknown>,
-      ),
-    );
-    res.status(200).json(serializableCategories);
+    const result = await pool.query(`SELECT * FROM "Categories"`);
+    res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error fetching all categories:', error);
     res.status(500).json({ error: 'Internal server error' });

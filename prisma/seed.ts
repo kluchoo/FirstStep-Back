@@ -9,6 +9,7 @@ import {
   Role,
 } from '@prisma/client';
 import * as dotenv from 'dotenv';
+import { Pool } from 'pg';
 
 // Załaduj zmienne środowiskowe
 dotenv.config();
@@ -18,6 +19,10 @@ const VIDEO_PLACEHOLDER = 'http://localhost:3000/uploads/1745914752310-738194624
 const isDevelopment = process.env.DEVELOPMENT === 'true';
 
 const prisma = new PrismaClient();
+// Dodajemy pool do bezpośrednich zapytań SQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL?.replace(/^"|"$/g, ''),
+});
 
 // Funkcja do czyszczenia bazy danych
 async function cleanDatabase() {
@@ -94,7 +99,7 @@ async function seedCategory(name: string, description = '') {
   }
 }
 
-// Funkcja do seedowania kursu
+// Funkcja do seedowania kursu - zmodyfikowana, aby używać bezpośrednich zapytań SQL
 async function seedCourse(
   creatorId: bigint,
   categoryIds: bigint[], // dodano parametr categoryIds
@@ -103,61 +108,90 @@ async function seedCourse(
   difficultyLevel: Difficulty = Difficulty.BASIC,
   status: CourseStatus = CourseStatus.PUBLISHED,
 ) {
+  const client = await pool.connect();
   try {
-    // Tworzymy kurs z relacją do wielu kategorii
-    const course = await prisma.courses.create({
-      data: {
-        creatorId,
-        title,
-        description,
-        difficultyLevel,
-        status,
-        categories: {
-          connect: categoryIds.map((id) => ({ id: BigInt(id) })),
-        },
-        courseOrder: {
-          create: {
-            lastOrder: 1,
-          },
-        },
-      },
-    });
+    await client.query('BEGIN');
 
+    // Poprawiono nazwę kolumny z "creatorid" na "creatorId" z prawidłową wielkością liter
+    const courseResult = await client.query(
+      `
+      INSERT INTO "Courses" ("creatorId", title, description, "difficultyLevel", status) 
+      VALUES ($1, $2, $3, $4, $5) 
+      RETURNING *
+      `,
+      [creatorId.toString(), title, description, difficultyLevel, status],
+    );
+
+    const course = courseResult.rows[0];
+
+    // Tworzymy element order dla kursu
+    await client.query(
+      `
+      INSERT INTO "CourseElementOrder" ("courseId", "lastOrder") 
+      VALUES ($1, 1)
+      `,
+      [course.id],
+    );
+
+    // Dodajemy powiązania z kategoriami - używamy "_CourseCategories" zgodnie ze schematem Prisma
+    for (const categoryId of categoryIds) {
+      await client.query(
+        `
+        INSERT INTO "_CourseCategories" ("A", "B") 
+        VALUES ($1, $2)
+        `,
+        [categoryId.toString(), course.id],
+      );
+    }
+
+    await client.query('COMMIT');
     return course;
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error(`Błąd podczas tworzenia kursu ${title}:`, error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
-// Funkcja do seedowania elementów kursu
+// Funkcja do seedowania elementów kursu - zmodyfikowana, aby używać bezpośrednich zapytań SQL
 async function seedCourseElements(courseId: bigint, elementsCount = 5) {
   // Użyj tylko dostępnych typów z enum
   const elementTypes: ElementType[] = [
     ElementType.HEADER,
     ElementType.TEXT,
     ElementType.IMAGE,
-    ElementType.VIDEO, // Zamieniam CODE na VIDEO zgodnie z aktualnym schematem
+    ElementType.VIDEO,
   ];
 
   // Definiujemy stały content dla elementów typu TEXT
   const textElementContent = `[{"insert":"Lorem ","attributes":{"bold":true}},{"insert":"ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis elementum felis in mollis. Cras pellentesque massa a magna malesuada dignissim. Cras est metus, gravida nec nisi in, venenatis posuere sem. Nullam eleifend sed ante non dapibus. Suspendisse ac neque vel nisi dapibus tempor sed non enim. Donec nulla leo, viverra sit amet nunc egestas, scelerisque lobortis nisl. Sed sodales egestas mauris. Aenean egestas libero at ornare semper. Nam purus nisl, semper id felis eu, bibendum dapibus nunc. Donec scelerisque neque mauris, sit amet eleifend ipsum blandit a. Integer et aliquet sapien. Aliquam ultrices ex ac ex condimentum, vel consequat lectus semper.\\n"}]`;
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
     // Pobierz bieżący lastOrder dla tego kursu
-    let courseOrder = await prisma.courseElementOrder.findUnique({
-      where: { courseId },
-    });
+    const courseOrderResult = await client.query(
+      `
+      SELECT "lastOrder" FROM "CourseElementOrder" 
+      WHERE "courseId" = $1
+      `,
+      [courseId.toString()],
+    );
 
-    if (!courseOrder) {
-      courseOrder = await prisma.courseElementOrder.create({
-        data: {
-          courseId,
-          lastOrder: 1,
-        },
-      });
+    let currentOrder = 1;
+    if (courseOrderResult.rows.length > 0) {
+      currentOrder = courseOrderResult.rows[0].lastOrder;
+    } else {
+      await client.query(
+        `
+        INSERT INTO "CourseElementOrder" ("courseId", "lastOrder") 
+        VALUES ($1, 1)
+        `,
+        [courseId.toString()],
+      );
     }
-
-    const currentOrder = courseOrder.lastOrder;
 
     // Tworzymy elementy kursu
     for (let i = 0; i < elementsCount; i++) {
@@ -177,113 +211,170 @@ async function seedCourseElements(courseId: bigint, elementsCount = 5) {
         content = faker.lorem.paragraph();
       }
 
-      const element = await prisma.courseElements.create({
-        data: {
-          courseId,
-          type,
-          content,
-          order: currentOrder + i,
-          additionalData: {},
-        },
-      });
+      // Tworzymy element kursu
+      const elementResult = await client.query(
+        `
+        INSERT INTO "CourseElements" ("courseId", type, content, "order", "additionalData") 
+        VALUES ($1, $2, $3, $4, $5::jsonb) 
+        RETURNING *
+        `,
+        [courseId.toString(), type, content, currentOrder + i, '{}'],
+      );
+
+      const element = elementResult.rows[0];
+
       // Dodajemy styl do elementu kursu
-      await prisma.elementsStyle.create({
-        data: {
-          courseElementId: element.id,
-          isBold: faker.datatype.boolean(),
-          isItalic: faker.datatype.boolean(),
-          isUnderline: faker.datatype.boolean(),
-          hasHighlight: faker.datatype.boolean(),
-          color: faker.color.rgb({ prefix: '#', casing: 'lower' }),
-          fontSize: faker.number.float({ min: 10, max: 32, fractionDigits: 1 }),
-        },
-      });
+      await client.query(
+        `
+        INSERT INTO "ElementsStyle" ("courseElementId", "isBold", "isItalic", "isUnderline", "hasHighlight", "color", "fontSize") 
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `,
+        [
+          element.id,
+          faker.datatype.boolean(),
+          faker.datatype.boolean(),
+          faker.datatype.boolean(),
+          faker.datatype.boolean(),
+          faker.color.rgb({ prefix: '#', casing: 'lower' }),
+          faker.number.float({ min: 10, max: 32, fractionDigits: 1 }),
+        ],
+      );
     }
 
     // Aktualizujemy lastOrder w CourseElementOrder
-    await prisma.courseElementOrder.update({
-      where: { courseId },
-      data: { lastOrder: currentOrder + elementsCount },
-    });
+    await client.query(
+      `
+      UPDATE "CourseElementOrder" 
+      SET "lastOrder" = $1 
+      WHERE "courseId" = $2
+      `,
+      [currentOrder + elementsCount, courseId.toString()],
+    );
+
+    await client.query('COMMIT');
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error(`Błąd podczas tworzenia elementów dla kursu ID: ${courseId}:`, error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
-// Funkcja do seedowania testu dla kursu
+// Funkcja do seedowania testu dla kursu - zmodyfikowana, aby używać bezpośrednich zapytań SQL
 async function seedTest(creatorId: bigint, courseId: bigint, title: string, questionsCount = 5) {
-  // Najpierw tworzymy test
-  const test = await prisma.tests.create({
-    data: {
-      creatorId,
-      courseId,
-      title,
-      duration: faker.number.int({ min: 15, max: 60 }),
-    },
-  });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  // Następnie tworzymy pytania
-  for (let i = 0; i < questionsCount; i++) {
-    const questionType = faker.helpers.arrayElement(Object.values(QuestionType));
-    const question = await prisma.testQuestions.create({
-      data: {
-        testId: test.id,
-        content: faker.lorem.sentence() + '?',
-        questionType,
-        points: faker.number.int({ min: 1, max: 5 }),
-        order: i + 1,
-      },
-    });
+    // Najpierw tworzymy test
+    const testResult = await client.query(
+      `
+      INSERT INTO "Tests" ("creatorId", "courseId", title, duration) 
+      VALUES ($1, $2, $3, $4) 
+      RETURNING *
+      `,
+      [creatorId.toString(), courseId.toString(), title, faker.number.int({ min: 15, max: 60 })],
+    );
 
-    // Dla każdego pytania tworzymy odpowiedzi
-    const answersCount =
-      questionType === QuestionType.TRUE_FALSE ? 2 : faker.number.int({ min: 2, max: 5 });
+    const test = testResult.rows[0];
 
-    for (let j = 0; j < answersCount; j++) {
-      let isCorrect = false;
+    // Następnie tworzymy pytania
+    for (let i = 0; i < questionsCount; i++) {
+      const questionType = faker.helpers.arrayElement(Object.values(QuestionType));
 
-      // Dla pytań jednokrotnego wyboru, tylko jedna odpowiedź jest poprawna
-      if (questionType === QuestionType.SINGLE_CHOICE && j === 0) {
-        isCorrect = true;
-      }
-      // Dla pytań wielokrotnego wyboru, losowo określamy poprawność
-      else if (questionType === QuestionType.MULTIPLE_CHOICE) {
-        isCorrect = faker.datatype.boolean();
-      }
-      // Dla pytań true/false
-      else if (questionType === QuestionType.TRUE_FALSE) {
-        isCorrect = j === 0;
-      }
+      const questionResult = await client.query(
+        `
+        INSERT INTO "TestQuestions" ("testId", content, "questionType", points, "order") 
+        VALUES ($1, $2, $3, $4, $5) 
+        RETURNING *
+        `,
+        [
+          test.id,
+          faker.lorem.sentence() + '?',
+          questionType,
+          faker.number.int({ min: 1, max: 5 }),
+          i + 1,
+        ],
+      );
 
-      await prisma.testAnswers.create({
-        data: {
-          questionId: question.id,
-          content:
+      const question = questionResult.rows[0];
+
+      // Dla każdego pytania tworzymy odpowiedzi
+      const answersCount =
+        questionType === QuestionType.TRUE_FALSE ? 2 : faker.number.int({ min: 2, max: 5 });
+
+      for (let j = 0; j < answersCount; j++) {
+        let isCorrect = false;
+
+        // Dla pytań jednokrotnego wyboru, tylko jedna odpowiedź jest poprawna
+        if (questionType === QuestionType.SINGLE_CHOICE && j === 0) {
+          isCorrect = true;
+        }
+        // Dla pytań wielokrotnego wyboru, losowo określamy poprawność
+        else if (questionType === QuestionType.MULTIPLE_CHOICE) {
+          isCorrect = faker.datatype.boolean();
+        }
+        // Dla pytań true/false
+        else if (questionType === QuestionType.TRUE_FALSE) {
+          isCorrect = j === 0;
+        }
+
+        await client.query(
+          `
+          INSERT INTO "TestAnswers" ("questionId", content, "isCorrect", "order") 
+          VALUES ($1, $2, $3, $4)
+          `,
+          [
+            question.id,
             questionType === QuestionType.TRUE_FALSE
               ? j === 0
                 ? 'Prawda'
                 : 'Fałsz'
               : faker.lorem.sentence(),
-          isCorrect,
-          order: j + 1,
-        },
-      });
+            isCorrect,
+            j + 1,
+          ],
+        );
+      }
     }
+
+    // Aktualizujemy kurs o powiązanie z testem
+    await client.query(
+      `
+      UPDATE "Courses" 
+      SET "testId" = $1 
+      WHERE id = $2
+      `,
+      [test.id, courseId.toString()],
+    );
+
+    await client.query('COMMIT');
+    return test;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(`Błąd podczas tworzenia testu dla kursu ID: ${courseId}:`, error);
+    throw error;
+  } finally {
+    client.release();
   }
-
-  // Aktualizujemy kurs o powiązanie z testem
-  await prisma.courses.update({
-    where: { id: courseId },
-    data: { testId: test.id },
-  });
-
-  return test;
 }
 
+// Funkcja main pozostaje podobna, ale używa teraz bezpośrednich zapytań SQL
 async function main() {
   // Najpierw czyścimy bazę danych
   await cleanDatabase();
+
+  // Wyłączamy wyzwalacze na czas seedowania - każde polecenie osobno
+  console.log('Wyłączanie wyzwalaczy na czas seedowania...');
+  try {
+    await prisma.$executeRaw`DROP TRIGGER IF EXISTS trg_log_course_create ON "Courses"`;
+    await prisma.$executeRaw`DROP TRIGGER IF EXISTS trg_log_course_update ON "Courses"`;
+    await prisma.$executeRaw`DROP TRIGGER IF EXISTS trg_log_course_delete ON "Courses"`;
+    console.log('Wyzwalacze zostały wyłączone');
+  } catch (error) {
+    console.warn('Nie udało się wyłączyć wyzwalaczy:', error);
+  }
 
   const defaultPassword = '$2b$10$6iP4.aytBwTWlJmHCZWD5eVQy5faxxQtjEsQpk5kcTiBBzJwYyrim'; // zahaszowane "password123"
   console.log('Rozpoczęto seedowanie bazy danych...');
@@ -443,6 +534,32 @@ async function main() {
         }
       }
     }
+  }
+
+  // Na końcu ponownie włączamy wyzwalacze - każde polecenie osobno
+  console.log('Ponowne włączanie wyzwalaczy...');
+  try {
+    await prisma.$executeRaw`
+      CREATE TRIGGER trg_log_course_create
+      AFTER INSERT ON "Courses"
+      FOR EACH ROW EXECUTE FUNCTION log_course_create()
+    `;
+    
+    await prisma.$executeRaw`
+      CREATE TRIGGER trg_log_course_update
+      AFTER UPDATE ON "Courses"
+      FOR EACH ROW EXECUTE FUNCTION log_course_update()
+    `;
+    
+    await prisma.$executeRaw`
+      CREATE TRIGGER trg_log_course_delete
+      BEFORE DELETE ON "Courses"
+      FOR EACH ROW EXECUTE FUNCTION log_course_delete()
+    `;
+    
+    console.log('Wyzwalacze zostały ponownie włączone');
+  } catch (error) {
+    console.warn('Nie udało się włączyć wyzwalaczy:', error);
   }
 }
 

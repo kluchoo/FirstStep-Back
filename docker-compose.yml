@@ -9,6 +9,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
     ports:
       - '5432:5432'
@@ -42,6 +44,30 @@ services:
       JWT_SECRET: ${JWT_SECRET}
 
       UPLOAD_DIR: ${UPLOAD_DIR}
+    develop:
+      watch:
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./bun.lock
+        - action: rebuild
+          path: ./prisma/
+        - action: sync
+          path: ./src/
+          target: /app/src/
+        - action: sync
+          path: ./dist/
+          target: /app/dist/
+        - action: sync
+          path: ./public/
+          target: /app/public/
+          ignore:
+            - node_modules/
+        - action: sync
+          path: ./src/swagger.json
+          target: /app/src/swagger.json
+        - action: rebuild
+          path: ./.env
 
   # stepus:
   #   build:
