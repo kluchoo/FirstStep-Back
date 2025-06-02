@@ -1,30 +1,29 @@
-# Używamy uniwersalnego obrazu deweloperskiego od Microsoft jako obrazu bazowego
-FROM mcr.microsoft.com/devcontainers/typescript-node
-ENV DEBIAN_FRONTEND=noninteractive 
+FROM mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye
 
-COPY prisma.sh /usr/local/bin/prisma.sh
-RUN chmod +x /usr/local/bin/prisma.sh
+# Instalacja dodatkowych narzędzi
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends \
+    curl \
+    wget \
+    git \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    apt-transport-https
 
+# Instalacja Bun
+USER node
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/home/node/.bun/bin:${PATH}"
 
+# Przejdź z powrotem do roota dla pozostałych instalacji
+USER root
 
+# Dodaj bash alias dla Bun
+RUN echo 'export PATH="/home/node/.bun/bin:$PATH"' >> /home/node/.bashrc \
+    && echo 'alias baza="bunx prisma generate && bunx prisma-dbml-generator"' >> /home/node/.bashrc
 
-RUN set -ex && \
-    chmod +x /etc/bash.bashrc && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends nala && \
-    nala install -y --no-install-recommends curl apt-transport-https ca-certificates ffmpeg && \
-    curl -sSL https://raw.githubusercontent.com/vegardit/fast-apt-mirror.sh/v1/fast-apt-mirror.sh -o /usr/local/bin/fast-apt-mirror.sh && \
-    chmod 755 /usr/local/bin/fast-apt-mirror.sh && \
-    /usr/local/bin/fast-apt-mirror.sh find --apply && \
-    echo alias baza="npx prisma generate" >> /etc/bash.bashrc && \
-    chmod +x /etc/bash.bashrc && \
-    # Clean up
-    apt-get clean && \
-    apt-get autoremove -y && \
-    rm -rf \
-    /var/lib/apt/lists/* \
-    /tmp/* \
-    /var/tmp/* \
-    /usr/share/doc/* \
-    /usr/share/man/* \
-    /var/log/*
+# Czyszczenie
+RUN apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*

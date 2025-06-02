@@ -1,67 +1,95 @@
-// src/index.ts
-import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import express from 'express';
 import fs from 'fs';
+// import https from 'https';
 import path, { dirname } from 'path';
-// import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { fileURLToPath } from 'url';
-import { generateSwagger } from './autogen';
-import { authenticateToken } from './middlewares/authMiddleware';
+// import { generateSwagger } from './autogen';
+import type { NextFunction, Request, Response } from 'express';
+import { SwaggerTheme, SwaggerThemeNameEnum } from 'swagger-themes';
+// import limiter from './middlewares/rateLimitMiddleware';
+import aiRouters from './routers/aiRouters';
 import authRoutes from './routers/authRoutes';
+import coursesRouters from './routers/coursesRouters.js';
+import fileRoutes from './routers/fileRoutes.js';
+import testRouters from './routers/testRouters';
 
-// import authRoutes from './routers/authRoutes';
-
-//swager opcje
-generateSwagger();
+// Generowanie Swaggera
+// generateSwagger();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-//swager opcje
-
+// Ścieżka do pliku Swaggera
 const swaggerFilePath = path.join(__dirname, 'swagger.json');
-
-// Read the Swagger JSON file
 const swaggerDocument = JSON.parse(fs.readFileSync(swaggerFilePath, 'utf-8'));
+const theme = new SwaggerTheme();
 
-const prisma = new PrismaClient();
+const options = {
+  customCss: theme.getBuffer(SwaggerThemeNameEnum.DARK),
+};
+const corsOptions = {
+  origin: '*',
+  // + FRONT_PORT,
+  optionsSuccessStatus: 200,
+  credentials: true,
+};
+
 const app = express();
-app.use(cors());
-app.use(express.json());
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use(cors(corsOptions));
+// Zwiększenie limitu rozmiaru ciała żądania
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-//logowanie i rejestracja
+// Konfiguracja dostępu do plików statycznych z katalogu uploads
+const uploadDir = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadDir));
+
+// Ignorowanie weryfikacji certyfikatu SSL (tylko do testów lokalnych)
+// const agent = new https.Agent({
+//   rejectUnauthorized: false, // Ignoruj błędy certyfikatu
+// });
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log('ip:', req.ip);
+  next();
+});
+
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
+// app.use(limiter);
+
+// Logowanie i rejestracja
 app.use('/auth', authRoutes);
 
-// Zabezpieczone trasy
-app.get('/auth', authenticateToken, async (req, res) => {
-  res.json(req.user);
+// AI
+app.use('/ai', aiRouters);
+
+// kursy
+app.use('/courses', coursesRouters);
+
+// pliki
+app.use('/files', fileRoutes);
+
+// testy
+app.use('/tests', testRouters);
+
+// filepath: /home/dominik/firststep-back/src/index.ts
+if (!process.env.PORT) {
+  console.error('PORT environment variable is not set. Please set it in your .env file.');
+  process.exit(1); // Exit the process with an error code
+}
+
+// app.listen(`0.0.0.0:${process.env.PORT}`, () => {
+//   console.log(`Server is running on http://0.0.0.0:${process.env.PORT}`);
+// });
+const PORT = parseInt(process.env.PORT);
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on http://0.0.0.0:${process.env.PORT}`);
 });
-
-// app.get('/api/users', async (req, res) => {
-//   const users = await prisma.user.findMany();
-//   const sanitizedUsers = users.map((user) => ({
-//     ...user,
-//     id: Number(user.id),
-//   }));
-//   res.json(sanitizedUsers);
+// ...existing code...
+// Uruchom serwer HTTPS
+// const PORT = process.env.PORT || 8443; // Domyślny port HTTPS to 443
+// https.createServer(sslOptions, app).listen(PORT, () => {
+//   console.log(`secured server running on https://localhost:${PORT}`);
 // });
-
-// app.get('/hello', (req, res) => {
-//   res.json({ message: 'Hello World' });
-// });
-
-// app.post('/api/users', async (req, res) => {
-//   const { email } = req.body;
-//   const user = await prisma.user.create({
-//     data: {
-//       email,
-//     },
-//   });
-//   res.json(user);
-// });
-
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
-});

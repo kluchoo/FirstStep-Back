@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:alpine
+    container_name: postgres-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+    ports:
+      - '5432:5432'
+    networks:
+      - FirstStep
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app
+    ports:
+      - '8000:8000'
+      - '3000:3000'
+      - '5555:5555'
+    networks:
+      - FirstStep
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+
+      DEVELOPMENT: ${DEVELOPMENT}
+
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+
+      PORT: ${PORT}
+
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      JWT_SECRET: ${JWT_SECRET}
+
+      UPLOAD_DIR: ${UPLOAD_DIR}
+
+  # stepus:
+  #   build:
+  #     context: ./AI
+  #     dockerfile: Dockerfile
+  #   container_name: stepus
+  #   ports:
+  #     - '8080:11434'
+  #   networks:
+  #     - FirstStep
+  #   restart: unless-stopped
+  #   volumes:
+  #     - stepus_data:/root/.ollama
+
+networks:
+  FirstStep:
+    external: true
+
+volumes:
+  postgres_data:
+  stepus_data:

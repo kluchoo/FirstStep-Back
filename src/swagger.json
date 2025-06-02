@@ -1,18 +1,121 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "My API",
-    "description": "Description",
+    "title": "FirstStep API",
+    "description": "API documentation for FirstStep",
     "version": "1.0.0"
   },
-  "host": "localhost:3000",
   "basePath": "/",
-  "schemes": [
-    "http"
+  "schemes": ["http"],
+  "tags": [
+    {
+      "name": "courses",
+      "description": "Course operations"
+    },
+    {
+      "name": "auth",
+      "description": "Authentication operations"
+    },
+    {
+      "name": "ai",
+      "description": "AI operations"
+    },
+    {
+      "name": "Files",
+      "description": "File operations"
+    },
+    {
+      "name": "tests",
+      "description": "Test operations"
+    }
+  ],
+  "securityDefinitions": {
+    "bearerAuth": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "Authorization"
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
   ],
   "paths": {
-    "/auth/resignin": {
+    "/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "example": "any"
+                },
+                "password": {
+                  "example": "any"
+                },
+                "nickname": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "example": "any"
+                },
+                "password": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/auth/authenticate": {
       "get": {
+        "tags": ["auth"],
         "description": "",
         "parameters": [
           {
@@ -37,54 +140,43 @@
         }
       }
     },
-    "/auth/register": {
+    "/ai/ask": {
       "post": {
-        "description": "",
+        "tags": ["ai"],
+        "description": "Send a prompt to the AI model",
         "parameters": [
           {
             "name": "body",
             "in": "body",
+            "required": true,
             "schema": {
               "type": "object",
               "properties": {
-                "email": {
-                  "example": "any"
-                },
-                "password": {
-                  "example": "any"
-                }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/auth/login": {
-      "post": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "email": {
-                  "example": "any"
-                },
-                "password": {
-                  "example": "any"
+                "messages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "role": {
+                        "type": "string",
+                        "example": "user"
+                      },
+                      "content": {
+                        "type": "string",
+                        "example": "Hello, AI!"
+                      }
+                    }
+                  },
+                  "example": [
+                    {
+                      "role": "user",
+                      "content": "Hello, AI!"
+                    },
+                    {
+                      "role": "assistant",
+                      "content": "How can I help you?"
+                    }
+                  ]
                 }
               }
             }
@@ -92,7 +184,190 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "AI response",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Hello, how can I assist you?"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Invalid input"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Something went wrong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/courses": {
+      "get": {
+        "tags": ["courses"],
+        "summary": "Get all courses",
+        "description": "Retrieve a list of all available courses.",
+        "responses": {
+          "200": {
+            "description": "List of courses",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "example": "Introduction to Programming"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Learn the basics of programming."
+                  },
+                  "difficultyLevel": {
+                    "type": "string",
+                    "enum": ["BASIC", "INTERMEDIATE", "ADVANCED"],
+                    "example": "BASIC"
+                  },
+                  "creationDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-01-01T00:00:00Z"
+                  },
+                  "modificationDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-01-02T00:00:00Z"
+                  },
+                  "studentCount": {
+                    "type": "integer",
+                    "example": 100
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"],
+                    "example": "PUBLISHED"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Unauthorized access"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Internal server error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["courses"],
+        "summary": "Create new course",
+        "description": "Create a new course in the system",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "example": "Introduction to Python"
+                },
+                "description": {
+                  "type": "string",
+                  "example": "Learn Python programming from scratch"
+                },
+                "difficultyLevel": {
+                  "type": "string",
+                  "enum": ["BASIC", "INTERMEDIATE", "ADVANCED"],
+                  "example": "BASIC"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"],
+                  "example": "DRAFT"
+                }
+              },
+              "required": ["title", "difficultyLevel", "status"]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Course created successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": 1
+                },
+                "title": {
+                  "type": "string",
+                  "example": "Introduction to Python"
+                },
+                "description": {
+                  "type": "string",
+                  "example": "Learn Python programming from scratch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Invalid input data"
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized"
@@ -100,6 +375,914 @@
           "500": {
             "description": "Internal Server Error"
           }
+        }
+      }
+    },
+    "/courses/{nickname}": {
+      "get": {
+        "tags": ["courses"],
+        "summary": "Get user courses",
+        "description": "Retrieve courses created by a specific user",
+        "parameters": [
+          {
+            "name": "nickname",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "User nickname"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of user courses",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Course"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/courses/id/{id}": {
+      "get": {
+        "tags": ["courses"],
+        "summary": "Get course by ID",
+        "description": "Retrieve a specific course by its ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Course ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Course details",
+            "schema": {
+              "$ref": "#/definitions/Course"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Course not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/courses/{id}": {
+      "put": {
+        "tags": ["courses"],
+        "summary": "Update course",
+        "description": "Update an existing course by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Course ID to update"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "example": "Updated Python Course"
+                },
+                "description": {
+                  "type": "string",
+                  "example": "Updated course description"
+                },
+                "difficultyLevel": {
+                  "type": "string",
+                  "enum": ["BASIC", "INTERMEDIATE", "ADVANCED"],
+                  "example": "INTERMEDIATE"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"],
+                  "example": "PUBLISHED"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Course updated successfully",
+            "schema": {
+              "$ref": "#/definitions/Course"
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Not the course owner"
+          },
+          "404": {
+            "description": "Course not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["courses"],
+        "summary": "Delete course",
+        "description": "Delete a course by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Course ID to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Course deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Not the course owner"
+          },
+          "404": {
+            "description": "Course not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/courses/{courseId}/elements": {
+      "get": {
+        "tags": ["courses"],
+        "summary": "Get course elements",
+        "description": "Retrieve all elements of a specific course by its ID.",
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "ID of the course"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of course elements",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["HEADER", "TEXT", "IMAGE", "VIDEO", "FILE", "CODE"],
+                    "example": "TEXT"
+                  },
+                  "content": {
+                    "type": "string",
+                    "example": "This is a course element content."
+                  },
+                  "order": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "additionalData": {
+                    "type": "object",
+                    "example": {
+                      "key": "value"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Course not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": ["courses"],
+        "summary": "Set course elements",
+        "description": "Update existing elements and create new elements for a course. Elements not included in the request will be deleted.",
+        "parameters": [
+          {
+            "name": "courseId",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "ID of the course"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "elements": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "description": "ID of the element (optional for new elements)",
+                        "example": 1
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": ["HEADER", "TEXT", "IMAGE", "VIDEO", "FILE", "CODE"],
+                        "example": "TEXT"
+                      },
+                      "content": {
+                        "type": "string",
+                        "example": "This is the content of the course element."
+                      },
+                      "order": {
+                        "type": "integer",
+                        "example": 1
+                      }
+                    },
+                    "required": ["type", "content", "order"]
+                  }
+                }
+              },
+              "required": ["elements"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Elements updated successfully",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["HEADER", "TEXT", "IMAGE", "VIDEO", "FILE", "CODE"],
+                    "example": "TEXT"
+                  },
+                  "content": {
+                    "type": "string",
+                    "example": "This is the content of the course element."
+                  },
+                  "order": {
+                    "type": "integer",
+                    "example": 1
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Course not found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/files/upload": {
+      "post": {
+        "summary": "Przesyła nowy plik (obraz)",
+        "tags": ["Files"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {
+            "in": "formData",
+            "name": "file",
+            "type": "file",
+            "required": true,
+            "description": "Plik do przesłania (obraz)"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Plik został pomyślnie przesłany"
+          },
+          "400": {
+            "description": "Błędne żądanie"
+          },
+          "401": {
+            "description": "Brak autoryzacji"
+          }
+        }
+      }
+    },
+    "/files": {
+      "get": {
+        "summary": "Pobiera listę plików użytkownika",
+        "tags": ["Files"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista plików użytkownika"
+          },
+          "401": {
+            "description": "Brak autoryzacji"
+          }
+        }
+      }
+    },
+    "/files/{id}": {
+      "delete": {
+        "summary": "Usuwa plik",
+        "tags": ["Files"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "ID pliku do usunięcia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plik został pomyślnie usunięty"
+          },
+          "401": {
+            "description": "Brak autoryzacji"
+          },
+          "404": {
+            "description": "Plik nie został znaleziony"
+          }
+        }
+      }
+    },
+    "/courses/categories": {
+      "get": {
+        "tags": ["courses"],
+        "summary": "Get all categories",
+        "description": "Retrieve a list of all available course categories.",
+        "responses": {
+          "200": {
+            "description": "List of categories",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "name": { "type": "string", "example": "Programowanie" },
+                  "description": { "type": "string", "example": "Kursy związane z programowaniem" }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Internal server error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tests": {
+      "get": {
+        "tags": ["tests"],
+        "summary": "Get all tests",
+        "description": "Retrieve a list of all available tests",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of all tests",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "creatorId": { "type": "integer", "example": 1 },
+                  "courseId": { "type": "integer", "example": 1 },
+                  "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                  "duration": { "type": "integer", "example": 60 },
+                  "creationDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-01-01T00:00:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Unauthorized access" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "No tests found" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Internal server error" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["tests"],
+        "summary": "Create a new test (raw query)",
+        "description": "Tworzy nowy test w bazie danych za pomocą zapytania SQL (raw query)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "creatorId": { "type": "integer", "example": 1 },
+                "courseId": { "type": "integer", "example": 1 },
+                "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                "duration": { "type": "integer", "example": 60 }
+              },
+              "required": ["creatorId", "courseId", "title", "duration"]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Test created successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer", "example": 1 },
+                "creatorId": { "type": "integer", "example": 1 },
+                "courseId": { "type": "integer", "example": 1 },
+                "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                "duration": { "type": "integer", "example": 60 },
+                "creationDate": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2023-01-01T00:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Missing required fields" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Internal server error" }
+              }
+            }
+          }
+        }
+      },
+      "/{id}": {
+        "get": {
+          "tags": ["tests"],
+          "summary": "Get test by ID",
+          "description": "Retrieve a specific test by its ID",
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "type": "integer",
+              "description": "Test ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Test details",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "creatorId": { "type": "integer", "example": 1 },
+                  "courseId": { "type": "integer", "example": 1 },
+                  "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                  "duration": { "type": "integer", "example": 60 },
+                  "creationDate": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2023-01-01T00:00:00Z"
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "error": { "type": "string", "example": "Unauthorized access" }
+                }
+              }
+            },
+            "404": {
+              "description": "Not Found",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": { "type": "string", "example": "Test not found" }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal Server Error",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "error": { "type": "string", "example": "Internal server error" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tests/{id}": {
+      "get": {
+        "tags": ["tests"],
+        "summary": "Get test by ID",
+        "description": "Retrieve a specific test by its ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Test details",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer", "example": 1 },
+                "creatorId": { "type": "integer", "example": 1 },
+                "courseId": { "type": "integer", "example": 1 },
+                "title": { "type": "string", "example": "Test końcowy kursu Python" },
+                "duration": { "type": "integer", "example": 60 },
+                "creationDate": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2023-01-01T00:00:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Unauthorized access" }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": { "type": "string", "example": "Test not found" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "Internal server error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tests/{id}/questions": {
+      "get": {
+        "tags": ["tests"],
+        "summary": "Get all questions for a test",
+        "description": "Retrieve all questions for a specific test by its ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of questions for the test",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "testId": { "type": "integer", "example": 1 },
+                  "content": { "type": "string", "example": "Jakie jest 2+2?" },
+                  "questionType": { "type": "string", "example": "SINGLE_CHOICE" },
+                  "points": { "type": "integer", "example": 1 },
+                  "order": { "type": "integer", "example": 1 }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No questions found for this test"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": ["tests"],
+        "summary": "Update questions for a test",
+        "description": "Update, add, or remove questions for a specific test. Questions not present in the request will be deleted.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer", "example": 1 },
+                      "content": { "type": "string", "example": "Jakie jest 2+2?" },
+                      "questionType": { "type": "string", "example": "SINGLE_CHOICE" },
+                      "points": { "type": "integer", "example": 1 },
+                      "order": { "type": "integer", "example": 1 }
+                    }
+                  }
+                }
+              },
+              "required": ["questions"]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Questions updated successfully" },
+          "400": { "description": "Questions must be an array" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/tests/{id}/answers": {
+      "get": {
+        "tags": ["tests"],
+        "summary": "Get all answers for a test",
+        "description": "Retrieve all answers for all questions in a specific test by its ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of answers for the test",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "example": 1 },
+                  "questionId": { "type": "integer", "example": 1 },
+                  "content": { "type": "string", "example": "4" },
+                  "isCorrect": { "type": "boolean", "example": true },
+                  "order": { "type": "integer", "example": 1 }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No answers found for this test"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": ["tests"],
+        "summary": "Update answers for a test",
+        "description": "Update, add, or remove answers for all questions in a specific test. Answers not present in the request will be deleted.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "Test ID"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "answers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer", "example": 1 },
+                      "questionId": { "type": "integer", "example": 1 },
+                      "content": { "type": "string", "example": "4" },
+                      "isCorrect": { "type": "boolean", "example": true },
+                      "order": { "type": "integer", "example": 1 }
+                    }
+                  }
+                }
+              },
+              "required": ["answers"]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Answers updated successfully" },
+          "400": { "description": "Answers must be an array" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Course": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "example": 1
+        },
+        "title": {
+          "type": "string",
+          "example": "Introduction to Programming"
+        },
+        "description": {
+          "type": "string",
+          "example": "Learn the basics of programming."
+        },
+        "difficultyLevel": {
+          "type": "string",
+          "enum": ["BASIC", "INTERMEDIATE", "ADVANCED"],
+          "example": "BASIC"
+        },
+        "creationDate": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2023-01-01T00:00:00Z"
+        },
+        "modificationDate": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2023-01-02T00:00:00Z"
+        },
+        "studentCount": {
+          "type": "integer",
+          "example": 100
+        },
+        "status": {
+          "type": "string",
+          "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"],
+          "example": "PUBLISHED"
         }
       }
     }

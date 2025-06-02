@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,52 +7,184 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                      BigInt    @id @default(autoincrement())
-  pseudonim               String    @db.VarChar(50)
-  email                   String    @unique @db.VarChar(100)
-  haslo                   String    @db.VarChar(255)
-  dataOstatniegoLogowania DateTime?
-  iloscKursow             Int
-
-  courses      Course[]
-  tests        Test[]
-  courseImages CourseImage[]
+model Users {
+  id                BigInt        @id @default(autoincrement())
+  nickname          String        @unique @db.VarChar(50)
+  email             String        @unique @db.VarChar(100)
+  password          String        @db.VarChar(255)
+  lastLoginDate     DateTime?     @db.Timestamp
+  role              Role          @default(STUDENT)
+  createdCourses    Courses[]
+  createdTests      Tests[]
+  courseEnrollments Enrollments[]
+  testResults       TestResults[]
+  uploads           FileUploads[]
 }
 
-model Course {
-  id              BigInt @id @default(autoincrement())
-  idTworcy        BigInt
-  tresc           Json
-  kategorie       String @db.VarChar(100)
-  poziomTrudnosci String @db.VarChar(50)
-
-  creator  User     @relation(fields: [idTworcy], references: [id])
-  category Category @relation(fields: [kategorie], references: [nazwa])
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
 }
 
-model Category {
-  id          BigInt @id @default(autoincrement())
-  nazwa       String @unique @db.VarChar(100)
-  iloscKursow Int
-
-  courses Course[]
+model Categories {
+  id          BigInt    @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100)
+  description String?   @db.Text
+  courses     Courses[] @relation("CourseCategories")
 }
 
-model Test {
-  id         BigInt @id @default(autoincrement())
-  idTworcy   BigInt
-  iloscPytan Int
-  pytania    Json
-  odpowiedzi Json
-
-  creator User @relation(fields: [idTworcy], references: [id])
+model Courses {
+  id               BigInt              @id @default(autoincrement())
+  creatorId        BigInt
+  testId           BigInt?
+  title            String              @db.VarChar(255)
+  description      String?             @db.Text
+  difficultyLevel  Difficulty
+  creationDate     DateTime            @default(now()) @db.Timestamp
+  modificationDate DateTime            @default(now()) @updatedAt @db.Timestamp
+  studentCount     Int                 @default(0)
+  status           CourseStatus        @default(DRAFT)
+  creator          Users               @relation(fields: [creatorId], references: [id])
+  categories       Categories[]        @relation("CourseCategories")
+  test             Tests?              @relation("CoursesToTests")
+  courseElements   CourseElements[]
+  enrollments      Enrollments[]
+  courseOrder      CourseElementOrder?
 }
 
-model CourseImage {
-  id       BigInt @id @default(autoincrement())
-  idTworcy BigInt
-  zdjecie  Bytes
+enum Difficulty {
+  BASIC
+  INTERMEDIATE
+  ADVANCED
+}
 
-  creator User @relation(fields: [idTworcy], references: [id])
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Tests {
+  id           BigInt          @id @default(autoincrement())
+  creatorId    BigInt
+  courseId     BigInt          @unique
+  title        String          @db.VarChar(255)
+  duration     Int
+  creationDate DateTime        @default(now()) @db.Timestamp
+  creator      Users           @relation(fields: [creatorId], references: [id])
+  course       Courses         @relation("CoursesToTests", fields: [courseId], references: [id])
+  questions    TestQuestions[]
+  testResults  TestResults[]
+}
+
+model TestQuestions {
+  id           BigInt       @id @default(autoincrement())
+  testId       BigInt
+  content      String       @db.Text
+  questionType QuestionType
+  points       Int          @default(1)
+  order        Int
+  test         Tests        @relation(fields: [testId], references: [id])
+  answers      TestAnswers[]
+}
+
+enum QuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+}
+
+model TestAnswers {
+  id         BigInt        @id @default(autoincrement())
+  questionId BigInt
+  content    String        @db.Text
+  isCorrect  Boolean       @default(false)
+  order      Int
+  question   TestQuestions @relation(fields: [questionId], references: [id])
+}
+model CourseElementOrder {
+  courseId  BigInt  @id
+  lastOrder Int     @default(1)
+  course    Courses @relation(fields: [courseId], references: [id])
+}
+
+model CourseElements {
+  id             BigInt          @id @default(autoincrement())
+  courseId       BigInt
+  type           ElementType
+  content        String          @db.Text
+  order          Int
+  additionalData Json?
+  course         Courses         @relation(fields: [courseId], references: [id])
+  elementsStyles ElementsStyle[]
+}
+
+enum ElementType {
+  HEADER
+  TEXT
+  IMAGE
+  VIDEO
+}
+
+model Enrollments {
+  id             BigInt           @id @default(autoincrement())
+  courseId       BigInt
+  userId         BigInt
+  enrollmentDate DateTime         @default(now()) @db.Timestamp
+  status         EnrollmentStatus @default(ACTIVE)
+  course         Courses          @relation(fields: [courseId], references: [id])
+  user           Users            @relation(fields: [userId], references: [id])
+
+  @@unique([courseId, userId])
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+model TestResults {
+  id        BigInt       @id @default(autoincrement())
+  testId    BigInt
+  userId    BigInt
+  result    Int // in %
+  startDate DateTime     @db.Timestamp
+  endDate   DateTime?    @db.Timestamp
+  status    ResultStatus @default(IN_PROGRESS)
+  test      Tests        @relation(fields: [testId], references: [id])
+  user      Users        @relation(fields: [userId], references: [id])
+}
+
+enum ResultStatus {
+  IN_PROGRESS
+  FINISHED
+  GRADED
+}
+
+model ElementsStyle {
+  id              BigInt         @id @default(autoincrement())
+  courseElementId BigInt
+  isBold          Boolean        @default(false)
+  isItalic        Boolean        @default(false)
+  color           String?        @db.VarChar(20)
+  fontSize        Float?
+  isUnderline     Boolean        @default(false)
+  hasHighlight    Boolean        @default(false)
+  courseElement   CourseElements @relation(fields: [courseElementId], references: [id])
+
+  @@index([courseElementId])
+}
+
+model FileUploads {
+  id           BigInt   @id @default(autoincrement())
+  filename     String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  path         String   @db.VarChar(255)
+  mimeType     String   @db.VarChar(100)
+  size         Int
+  uploadDate   DateTime @default(now()) @db.Timestamp
+  userId       BigInt
+  user         Users    @relation(fields: [userId], references: [id])
 }

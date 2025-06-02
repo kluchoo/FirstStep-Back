@@ -1,10 +1,13 @@
 // filepath: c:\Users\kidi\Desktop\FirstStep\firststep-back\src\middlewares\authMiddleware.ts
-import type { NextFunction, Request, Response } from 'express';
+import type { RequestWithUser } from '@/types/requestWithUser';
+import type { NextFunction, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateToken = (req: RequestWithUser, res: Response, next: NextFunction) => {
+  console.log('Authenticate token middleware is being executed...');
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
+  // console.log(authHeader);
 
   if (!token) {
     return res.sendStatus(401); // Unauthorized

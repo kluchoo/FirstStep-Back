@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    "MS-CEINTL.vscode-language-pack-pl",
+    "aaron-bond.better-comments",
+    "GitHub.copilot-chat",
+    "github.vscode-github-actions",
+    "usernamehw.errorlens",
+    "oven.bun-vscode",
+    "yzhang.markdown-all-in-one",
+    "mhutchie.git-graph",
+    "christian-kohler.path-intellisense",
+    "dbaeumer.vscode-eslint",
+    "mikestead.dotenv",
+    "steoates.autoimport",
+    "esbenp.prettier-vscode",
+    "ms-vscode-remote.remote-wsl"
+  ]
+}
