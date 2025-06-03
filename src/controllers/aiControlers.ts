@@ -29,10 +29,13 @@ export const askAi = async (req: Request, res: Response) => {
         .json({ message: 'Each message must have a role and content as strings' });
     }
 
+    // Połącz wiadomości w jeden prompt
+    const prompt = (messages as Message[]).map(m => `${m.role}: ${m.content}`).join('\n');
+
     // Wyślij prompt do Ollamy
-    const response = await axios.post('http://localhost:8080/api/generate', {
+    const response = await axios.post('http://stepus:11434/api/generate', {
       model: 'stepus',
-      messages,
+      prompt,
     });
 
     debug(response.data);

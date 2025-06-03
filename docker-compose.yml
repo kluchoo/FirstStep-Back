@@ -55,6 +55,14 @@ services:
   #   restart: unless-stopped
   #   volumes:
   #     - stepus_data:/root/.ollama
+  #   environment:
+  #     MODEL_NAME: gemma3  # jeśli chcesz override’ować ARG z Dockerfile
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - capabilities: [gpu]
+
 
 networks:
   FirstStep:
