@@ -2,14 +2,8 @@ import axios from 'axios';
 import { debug } from 'console';
 import type { Request, Response } from 'express';
 
-interface Message {
-  role: string;
-  content: string;
-}
-
 export const askAi = async (req: Request, res: Response) => {
   try {
-    debug('Received request to ask AI:', req.body);
     // Pobierz wiadomości z ciała żądania
     const { messages } = req.body;
     if (!messages || !Array.isArray(messages)) {
@@ -19,8 +13,8 @@ export const askAi = async (req: Request, res: Response) => {
     }
 
     // Sprawdź, czy każda wiadomość ma odpowiednią strukturę
-    const isValidMessages = (messages as Message[]).every(
-      (msg) => typeof msg.role === 'string' && typeof msg.content === 'string',
+    const isValidMessages = messages.every(
+      (msg: any) => typeof msg.role === 'string' && typeof msg.content === 'string',
     );
 
     if (!isValidMessages) {
@@ -30,7 +24,7 @@ export const askAi = async (req: Request, res: Response) => {
     }
 
     // Wyślij prompt do Ollamy
-    const response = await axios.post('http://stepus:11434/api/generate', {
+    const response = await axios.post('http://stepus:11434/api/chat', {
       model: 'stepus',
       messages,
     });
@@ -42,8 +36,8 @@ export const askAi = async (req: Request, res: Response) => {
 
     // Zwróć odpowiedź AI
     return res.status(200).json({ message: aiResponse });
-  } catch (e: unknown) {
-    console.error('Unexpected error:', e);
+  } catch (e) {
+    console.error('Error communicating with Ollama:', e);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

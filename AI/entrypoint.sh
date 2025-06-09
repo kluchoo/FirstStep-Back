@@ -11,7 +11,7 @@ until curl -s http://localhost:11434 > /dev/null; do
 done
 
 # Pobierz model i utwórz go w tle (nie blokuje serwera)
-ollama pull gemma3 &
+ollama pull {{MODEL_NAME}} &
 ollama create stepus -f /AI/stepus.yaml || true &
 
 # Trzymaj serwer ollama na pierwszym planie
